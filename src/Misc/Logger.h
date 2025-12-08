@@ -51,4 +51,4 @@ public:
 
 #define LOG(...) Logger::Instance().Log(__VA_ARGS__)
 
-#endif
+#endif // LOGGER_H

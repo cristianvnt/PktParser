@@ -1,3 +1,43 @@
+# build dirs
+build/
+cmake-build-*/
+out/
+
+# parsed files
+*.parsed.txt
+
+# CMake generated files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+install_manifest.txt
+Makefile
+CMakeSettings.json
+
+# IDE specific files
+# Visual Studio
+.vs/
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+*.sln
+*.suo
+*.user
+
+# CLion / IntelliJ
+.idea/
+cmake-build-debug/
+cmake-build-release/
+
+# VSCode
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
+*.swp
+*~
+
 # Prerequisites
 *.d
 

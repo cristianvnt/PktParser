@@ -16,6 +16,7 @@ namespace PktParser
 		// parsers
 		static void ParseAuthChallenge(BitReader& reader);
 		static void ParseSpellGo(BitReader& reader);
+		static void ParseUpdateWorldState(BitReader& reader);
 	};
 }
 

@@ -15,33 +15,15 @@ namespace PktParser
 	{
 		router.RegisterHandler(Opcode::SMSG_AUTH_CHALLENGE, ParseAuthChallenge);
 		router.RegisterHandler(Opcode::SMSG_SPELL_GO, ParseSpellGo);
+		router.RegisterHandler(Opcode::SMSG_UPDATE_WORLD_STATE, ParseUpdateWorldState);
 	}
 
 	void Parser::ParseAuthChallenge(BitReader& reader)
 	{
-		LOG("===== Parsing SMSG_AUTH_CHALLANGE =====");
 		reader.ReadUInt32(); // skip opcode
+		reader.ResetBitReader();
 
-		for (size_t i = 0; i < 8; ++i)
-		{
-			uint32 dosChallenge = reader.ReadUInt32();
-			LOG("	[{}] DosChallange: {}", i, dosChallenge);
-		}
-
-		std::vector<uint8> challenge(32);
-		for (size_t i = 0; i < 32; ++i)
-			challenge[i] = reader.ReadUInt8();
-
-		std::string challengeHex;
-		for (uint8 b : challenge)
-			fmt::format_to(std::back_inserter(challengeHex), "{:02X}", b);
-		LOG("Challenge: {}", challengeHex);
-
-		uint8 dosZeroBits = reader.ReadUInt8();
-		LOG("DosZeroBits: {}", dosZeroBits);
-
-		LOG("===== AUTH_CHALLENGE Parsed =====");
-		LOG("");
+		AuthChallengeData const* authData = reader.ReadChunk<AuthChallengeData>();
 	}
 
 	void Parser::ParseSpellGo(BitReader& reader)
@@ -124,6 +106,15 @@ namespace PktParser
 			loc.Z = locData->Z;
 			targetPoints.push_back(loc);
 		}
+	}
+
+	void Parser::ParseUpdateWorldState(BitReader& reader)
+	{
+		reader.ReadUInt32(); // skip opcode
+		reader.ResetBitReader();
+
+		WorldStateInfo const* worldStateInfo = reader.ReadChunk<WorldStateInfo>();
+		bool hidden = reader.ReadBit();
 	}
 
 }

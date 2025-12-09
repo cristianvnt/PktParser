@@ -8,6 +8,7 @@
 
 namespace PktParser
 {
+#pragma region SPELL_GO
 #pragma pack(push, 1)
 	struct SpellCastVisual
 	{
@@ -81,6 +82,23 @@ namespace PktParser
 		float Y;
 		float Z;
 	};
+
+#pragma endregion
+
+	struct WorldStateInfo
+	{
+		int32 VariableID;
+		int32 Value;
+	};
+
+#pragma pack(push, 1)
+	struct AuthChallengeData
+	{
+		uint32 DosChallenge[8];
+		uint8 Challenge[32];
+		uint8 DosZeroBits;
+	};
+#pragma pack(pop)
 }
 
 #endif // !PACKET_STRUCTURES_H

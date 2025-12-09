@@ -8,6 +8,7 @@
 
 namespace PktParser
 {
+#pragma pack(push, 1)
 	struct SpellCastVisual
 	{
 		int32 SpellXSpellVisualID;
@@ -26,6 +27,18 @@ namespace PktParser
 		int32 Value;
 	};
 
+	struct SpellHealPrediction 
+	{
+		int32 Points;
+		uint8 Type;
+	};
+
+	struct RuneData 
+	{
+		uint8 Start;
+		uint8 Count;
+	};
+
 	struct SpellCastFixedData
 	{
 		int32 SpellID;
@@ -39,6 +52,14 @@ namespace PktParser
 		uint8 DestLocSpellCastIndex;
 		CreatureImmunities Immunities;
 	};
+
+	struct TargetLocationData
+	{
+		float X;
+		float Y;
+		float Z;
+	};
+#pragma pack(pop)
 
 	struct SpellHitStatus
 	{

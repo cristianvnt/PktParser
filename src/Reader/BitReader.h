@@ -30,6 +30,35 @@ public:
 	void Skip(size_t bytes);
 
 	bool CanRead() const;
+
+	template<typename T>
+	inline T const* ReadChunk()
+	{
+		static_assert(std::is_trivially_copyable_v<T>, "T mult be trivially copyable");
+		static_assert(std::is_standard_layout_v<T>, "T must have standard layout");
+		ResetBitReader();
+
+		T const* result = reinterpret_cast<T const*>(GetCurrentPtr());
+		Skip(sizeof(T));
+		return result;
+	}
+
+	template<typename T>
+	inline void ReadChunkArray(std::vector<T>& out, size_t count)
+	{
+		static_assert(std::is_trivially_copyable_v<T>, "T mult be trivially copyable");
+		ResetBitReader();
+
+		if (count == 0)
+		{
+			out.clear();
+			return;
+		}
+
+		out.resize(count);
+		std::memcpy(out.data(), GetCurrentPtr(), count * sizeof(T));
+		Skip(count * sizeof(T));
+	}
 };
 
 #endif // BIT_READER_H

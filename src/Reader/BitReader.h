@@ -61,4 +61,4 @@ public:
 	}
 };
 
-#endif // BIT_READER_H
+#endif // !BIT_READER_H

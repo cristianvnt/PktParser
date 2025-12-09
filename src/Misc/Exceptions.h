@@ -16,4 +16,4 @@ public:
 	EndOfStreamException() : ParseException{ "Unexpected end of stream " } { }
 };
 
-#endif // EXCEPTIONS_H
+#endif // !EXCEPTIONS_H

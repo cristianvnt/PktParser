@@ -6,13 +6,17 @@
 
 namespace PktParser
 {
+	class PktRouter;
+
 	class Parser
 	{
 	public:
+		static void RegisterHandlers(PktRouter& router);
+		
+		// parsers
 		static void ParseAuthChallenge(BitReader& reader);
 		static void ParseSpellGo(BitReader& reader);
-		static void ParseSpellGo_CHUNKED(BitReader& reader);
 	};
 }
 
-#endif // PARSER_H
+#endif // !PARSER_H

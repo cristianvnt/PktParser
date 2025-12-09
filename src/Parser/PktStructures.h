@@ -83,4 +83,4 @@ namespace PktParser
 	};
 }
 
-#endif // PACKET_STRUCTURES_H
+#endif // !PACKET_STRUCTURES_H

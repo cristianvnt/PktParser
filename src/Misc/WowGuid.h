@@ -25,4 +25,4 @@ namespace PktParser
 	WowGuid128 ReadPackedGuid128(BitReader& reader);
 }
 
-#endif // WOW_GUID_H
+#endif // !WOW_GUID_H

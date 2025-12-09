@@ -8,6 +8,7 @@
 
 #include "Misc/Define.h"
 #include "BitReader.h"
+#include "Parser/Direction.h"
 
 namespace PktParser
 {
@@ -26,7 +27,7 @@ namespace PktParser
 	// packet header
 	struct PktHeader
 	{
-		std::string direction;
+		Direction direction;
 		int32 connectionIndex;
 		uint32 tickCount;
 		int32 packetLength;
@@ -53,10 +54,10 @@ namespace PktParser
 		~PktFileReader();
 
 		void ParseFileHeader();
-
 		std::optional<Pkt> ReadNextPacket();
 
 		PktFileHeader const& GetFileHeader() const { return _fileHeader; }
+		uint32 GetBuildVersion() const { return _fileHeader.clientBuild; }
 		int GetPacketNumber() const { return _pktNumber; }
 		bool IsOpen() const { return _file.is_open(); }
 
@@ -66,4 +67,4 @@ namespace PktParser
 	};
 }
 
-#endif // PKT_FILE_READER_H
+#endif // !PKT_FILE_READER_H

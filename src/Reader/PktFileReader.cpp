@@ -7,7 +7,6 @@
 
 namespace PktParser
 {
-
 	PktFileReader::PktFileReader(std::string const& filepath)
 		: _pktNumber{ 0 }
 	{
@@ -80,7 +79,7 @@ namespace PktParser
 
 	std::optional<Pkt> PktFileReader::ReadNextPacket()
 	{
-		if (_file.eof() || _file.peek() == EOF)
+		if (_file.peek() == EOF)
 			return std::nullopt;
 
 		try
@@ -120,14 +119,24 @@ namespace PktParser
 		uint32 directionMagik;
 		_file.read(reinterpret_cast<char*>(&directionMagik), sizeof(directionMagik));
 
-		if (directionMagik == 0x47534D53)
-			header.direction = "ServerToClient";
-		else if (directionMagik == 0x47534D43)
-			header.direction = "ClientToServer";
-		else if (directionMagik == 0x4E425F53)
-			header.direction = "BNServerToClient";
-		else
-			header.direction = "BNClientToServer";
+		switch (directionMagik)
+		{
+		case 0x47534D53: // "SMSG"
+			header.direction = Direction::ServerToClient;
+			break;
+		case 0x47534D43: // "CMSG"
+			header.direction = Direction::ClientToServer;
+			break;
+		case 0x4E425F53: // "S_BN"
+			header.direction = Direction::BNServerToClient;
+			break;
+		case 0x43425F53: // "S_BC"
+			header.direction = Direction::BNClientToServer;
+			break;
+		default:
+			header.direction = Direction::Bidirectional;
+			break;
+		}
 
 		_file.read(reinterpret_cast<char*>(&header.connectionIndex), sizeof(header.connectionIndex));
 		_file.read(reinterpret_cast<char*>(&header.tickCount), sizeof(header.tickCount));

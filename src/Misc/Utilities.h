@@ -7,6 +7,7 @@
 #include <fmt/core.h>
 
 #include "Define.h"
+#include "Parser/Direction.h"
 
 namespace Utilities
 {
@@ -37,6 +38,27 @@ namespace Utilities
 
 		return fmt::format("{}.{:03d}", buffer, ms);
 	}
+
+	inline char const* DirectionToString(PktParser::Direction dir)
+	{
+		using PktParser::Direction;
+
+		switch (dir)
+		{
+		case Direction::ClientToServer:
+			return "CMSG";
+		case Direction::ServerToClient:
+			return "SMSG";
+		case Direction::BNClientToServer:
+			return "BN_CMSG";
+		case Direction::BNServerToClient:
+			return "BN_SMSG";
+		case Direction::Bidirectional:
+			return "MSG";
+		default:
+			return "UNKNOWN";
+		}
+	}
 }
 
-#endif // UTILITIES_H
+#endif // !UTILITIES_H

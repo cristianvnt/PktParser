@@ -1,10 +1,9 @@
 #ifndef SPELL_MISS_TYPE_H
 #define SPELL_MISS_TYPE_H
 
-#include "Misc/Define.h"
 #include <cstdint>
 
-namespace PktParser
+namespace PktParser::Enums
 {
 	enum class SpellMissType : uint8
 	{

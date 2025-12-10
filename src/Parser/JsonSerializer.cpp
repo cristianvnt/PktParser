@@ -1,0 +1,215 @@
+#include "JsonSerializer.h"
+#include "Misc/Utilities.h"
+#include "Misc/WowGuid.h"
+#include "Structures/SpellGoData.h"
+#include "Structures/SpellTargetData.h"
+#include "Structures/Packed/AuthChallengeData.h"
+#include "Structures/Packed/WorldStateInfo.h"
+#include "Opcodes.h"
+
+using namespace PktParser::Reader;
+using namespace PktParser::Misc;
+using namespace PktParser::Structures;
+using namespace PktParser::Structures::Packed;
+
+namespace PktParser
+{
+	json JsonSerializer::SerializePacketHead(PktHeader const& header, uint32 build)
+	{
+		json j;
+		j["Direction"] = Misc::DirectionToString(header.direction);
+		j["PacketName"] = GetOpcodeName(header.opcode);
+		j["ConnectionIndex"] = header.connectionIndex;
+		j["TickCount"] = header.tickCount;
+		j["Timestamp"] = Misc::FormatUnixMilliseconds(header.timestamp);
+		j["Opcode"] = fmt::format("0x{:06X}", header.opcode);
+		j["Length"] = header.packetLength;
+		j["Build"] = build;
+
+		return j;
+	}
+
+	json JsonSerializer::SerializeAuthChallenge(AuthChallengeData const* data)
+	{
+		json j;
+		j["DosChallenge"] = json::array();
+		for (int i = 0; i < 8; i++)
+			j["DosChallenge"].push_back(data->DosChallenge[i]);
+
+		std::string challengeHex;
+		challengeHex.reserve(64);
+		for (int i = 0; i < 32; i++)
+			fmt::format_to(std::back_inserter(challengeHex), "{:02X}", data->Challenge[i]);
+		j["Challenge"] = challengeHex;
+		j["DosZeroBits"] = data->DosZeroBits;
+
+		return j;
+	}
+
+	json JsonSerializer::SerializeSpellGo(SpellGoData const& data)
+	{
+		json j;
+
+		j["CasterGUID"] = data.CasterGUID.ToString();
+		j["CasterUnit"] = data.CasterUnit.ToString();
+		j["CastID"] = data.CastID.ToString();
+		j["OriginalCastID"] = data.OriginalCastID.ToString();
+
+		j["SpellID"] = data.FixedData.SpellID;
+		j["SpellXSpellVisualID"] = data.FixedData.Visual.SpellXSpellVisualID;
+		j["ScriptVisualID"] = data.FixedData.Visual.ScriptVisualID;
+		j["CastFlags"] = data.FixedData.CastFlags;
+		j["CastFlagsEx"] = data.FixedData.CastFlagsEx;
+		j["CastFlagsEx2"] = data.FixedData.CastFlagsEx2;
+		j["CastTime"] = data.FixedData.CastTime;
+
+		j["TravelTime"] = data.FixedData.MissileTrajectory.TravelTime;
+		j["Pitch"] = data.FixedData.MissileTrajectory.Pitch;
+
+		j["AmmoDisplayID"] = data.FixedData.AmmoDisplayID;
+		j["DestLocSpellCastIndex"] = data.FixedData.DestLocSpellCastIndex;
+		j["ImmunitySchool"] = data.FixedData.Immunities.School;
+		j["ImmunityValue"] = data.FixedData.Immunities.Value;
+
+		j["HealPoints"] = data.HealPrediction.Points;
+		j["HealType"] = data.HealPrediction.Type;
+		j["BeaconGUID"] = data.BeaconGUID.ToString();
+
+		j["HitTargetsCount"] = data.HitTargetsCount;
+		j["MissTargetsCount"] = data.MissTargetsCount;
+		j["HitStatusCount"] = data.HitStatusCount;
+		j["MissStatusCount"] = data.MissStatusCount;
+		j["RemainingPowerCount"] = data.RemainingPowerCount;
+		j["HasRuneData"] = data.HasRuneData;
+		j["TargetPointsCount"] = data.TargetPointsCount;
+
+		json missArray = json::array();
+		for (size_t i = 0; i < data.MissTargets.size(); ++i)
+		{
+			json t;
+			t["GUID"] = data.MissTargets[i].ToString();
+			t["Type"] = GuidTypeToString(data.MissTargets[i].GetType());
+			t["Low"] = data.MissTargets[i].GetLow();
+			if (i < data.MissStatus.size())
+			{
+				t["MissReason"] = data.MissStatus[i].MissReason;
+				t["ReflectStatus"] = data.MissStatus[i].ReflectStatus;
+			}
+			missArray.push_back(t);
+		}
+		j["MissTargets"] = missArray;
+
+		j["Target"] = SerializeTargetData(data.TargetData);
+
+		json hitArray = json::array();
+		for (size_t i = 0; i < data.HitTargets.size(); ++i)
+		{
+			json t;
+			t["GUID"] = data.HitTargets[i].ToString();
+			t["Type"] = GuidTypeToString(data.HitTargets[i].GetType());
+			t["Low"] = data.HitTargets[i].GetLow();
+			if (data.HitTargets[i].HasEntry())
+				t["Entry"] = data.HitTargets[i].GetEntry();
+			if (i < data.HitStatus.size())
+				t["HitStatus"] = data.HitStatus[i];
+			hitArray.push_back(t);
+		}
+		j["HitTargets"] = hitArray;
+
+		if (!data.RemainingPower.empty())
+			j["RemainingPower"] = data.RemainingPower;
+
+		if (data.HasRuneData)
+		{
+			json runeData;
+			runeData["Start"] = data.Runes.Start;
+			runeData["Count"] = data.Runes.Count;
+			runeData["Cooldowns"] = data.RuneCooldowns;
+			j["RuneData"] = runeData;
+		}
+
+		if (!data.TargetPoints.empty())
+		{
+			json pointsArray = json::array();
+			for (auto const& point : data.TargetPoints)
+			{
+				json p;
+				p["Transport"] = point.Transport.ToString();
+				p["X"] = point.X;
+				p["Y"] = point.Y;
+				p["Z"] = point.Z;
+				pointsArray.push_back(p);
+			}
+			j["TargetPoints"] = pointsArray;
+		}
+
+		return j;
+	}
+
+	json JsonSerializer::SerializeTargetData(SpellTargetData const& target)
+	{
+		json j;
+
+		j["Flags"] = target.Flags;
+		j["FlagsString"] = Misc::GetTargetFlagName(target.Flags);
+		j["Unit"] = target.Unit.ToString();
+		j["Item"] = target.Item.ToString();
+		j["HasSrcLocation"] = target.HasSrcLocation;
+		j["HasDstLocation"] = target.HasDstLocation;
+		j["HasOrientation"] = target.HasOrientation;
+		j["HasMapID"] = target.HasMapID;
+
+		if (target.HasSrcLocation)
+		{
+			j["SrcLocation"] =
+			{
+				{"Transport", target.SrcLocation.Transport.ToString()},
+				{"X", target.SrcLocation.X},
+				{"Y", target.SrcLocation.Y},
+				{"Z", target.SrcLocation.Z}
+			};
+		}
+
+		if (target.HasDstLocation)
+		{
+			j["DstLocation"] =
+			{
+				{"Transport", target.DstLocation.Transport.ToString()},
+				{"X", target.DstLocation.X},
+				{"Y", target.DstLocation.Y},
+				{"Z", target.DstLocation.Z}
+			};
+		}
+
+		if (target.HasOrientation)
+			j["Orientation"] = target.Orientation;
+
+		if (target.HasMapID)
+			j["MapID"] = target.MapID;
+
+		j["Name"] = target.Name;
+
+		return j;
+	}
+
+	json JsonSerializer::SerializeUpdateWorldState(Packed::WorldStateInfo const* info, bool hidden)
+	{
+		json j;
+		j["WorldStateId"] = info->VariableID;
+		j["Value"] = info->Value;
+		j["Hidden"] = hidden;
+
+		return j;
+	}
+
+	json JsonSerializer::SerializeFullPacket(PktHeader const& header, uint32 build, uint32 pktNumber, json const& packetData)
+	{
+		json j;
+		j["Number"] = pktNumber;
+		j["Header"] = SerializePacketHead(header, build);
+		j["Data"] = packetData;
+
+		return j;
+	}
+
+}

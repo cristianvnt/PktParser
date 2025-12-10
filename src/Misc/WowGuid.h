@@ -3,10 +3,13 @@
 
 #include "Misc/Define.h"
 #include "Reader/BitReader.h"
-#include "Parser/GuidTypes.h"
+#include "Enums/GuidTypes.h"
 
-namespace PktParser
+namespace PktParser::Misc
 {
+	using GuidType = PktParser::Enums::GuidType;
+	using BitReader = PktParser::Reader::BitReader;
+
 	struct WowGuid128
 	{
 		uint64 Low;

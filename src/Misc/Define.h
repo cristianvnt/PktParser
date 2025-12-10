@@ -1,10 +1,7 @@
 #ifndef DEFINE_H
 #define DEFINE_H
 
-#include <iostream>
 #include <cstdint>
-#include <chrono>
-#include <string>
 
 using int8 = int8_t;
 using int16 = int16_t;

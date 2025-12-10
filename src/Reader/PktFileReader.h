@@ -8,9 +8,9 @@
 
 #include "Misc/Define.h"
 #include "BitReader.h"
-#include "Parser/Direction.h"
+#include "Enums/Direction.h"
 
-namespace PktParser
+namespace PktParser::Reader
 {
 	// file header
 	struct PktFileHeader
@@ -27,7 +27,7 @@ namespace PktParser
 	// packet header
 	struct PktHeader
 	{
-		Direction direction;
+		Enums::Direction direction;
 		int32 connectionIndex;
 		uint32 tickCount;
 		int32 packetLength;

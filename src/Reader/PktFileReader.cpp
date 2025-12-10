@@ -5,7 +5,9 @@
 
 #include <algorithm>
 
-namespace PktParser
+using namespace PktParser::Enums;
+
+namespace PktParser::Reader
 {
 	PktFileReader::PktFileReader(std::string const& filepath)
 		: _pktNumber{ 0 }

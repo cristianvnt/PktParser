@@ -3,7 +3,7 @@
 
 #include <cstdint>
 
-namespace PktParser
+namespace PktParser::Enums
 {
 	enum CastFlag : uint32
 	{

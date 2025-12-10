@@ -1,7 +1,9 @@
 #ifndef DIRECTION_H
 #define DIRECTION_H
 
-namespace PktParser
+#include "Misc/Define.h"
+
+namespace PktParser::Enums
 {
 	enum class Direction : uint8
 	{

@@ -2,7 +2,7 @@
 
 #include <fmt/core.h>
 
-namespace PktParser
+namespace PktParser::Misc
 {
 	GuidType WowGuid128::GetType() const
 	{

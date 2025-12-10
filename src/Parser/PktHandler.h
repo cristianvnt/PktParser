@@ -1,8 +1,9 @@
 #ifndef PKT_HANDLER_H
 #define PKT_HANDLER_H
 
+#include "Misc/Define.h"
 #include "Reader/BitReader.h"
-#include "Parser/Opcodes.h"
+#include "Reader/PktFileReader.h"
 
 #include <functional>
 #include <unordered_map>
@@ -10,7 +11,7 @@
 
 namespace PktParser
 {
-	using PktHandler = json(*)(BitReader&);
+	using PktHandler = std::function<json(Reader::BitReader&, uint32)>;
 
 	class PktRouter
 	{
@@ -23,12 +24,12 @@ namespace PktParser
 			_handlers[static_cast<uint32>(opcode)] = handler;
 		}
 
-		json HandlePacket(uint32 opcode, BitReader& reader)
+		json HandlePacket(uint32 opcode, Reader::BitReader& reader, uint32 pktNumber)
 		{
 			if (auto it = _handlers.find(opcode); it != _handlers.end())
-				return it->second(reader);
+				return it->second(reader, pktNumber);
 
-			return json::object();
+			return json{};
 		}
 	};
 }

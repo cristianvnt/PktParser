@@ -2,15 +2,17 @@
 #include <fstream>
 #include <cstdint>
 #include <filesystem>
+#include <iostream>
 
-#include "Misc/Utilities.h"
 #include "Misc/Logger.h"
 #include "Reader/BitReader.h"
 #include "Reader/PktFileReader.h"
 #include "Parser/Parser.h"
 #include "Parser/PktHandler.h"
+#include "Parser/JsonSerializer.h"
 
 using namespace PktParser;
+using namespace PktParser::Reader;
 
 int main(int argc, char* argv[])
 {
@@ -46,14 +48,13 @@ int main(int argc, char* argv[])
 				pktOpt = reader.ReadNextPacket();
 				continue;
 			}
+			uint32 pktNumber = reader.GetPacketNumber() - 1;
 
-			LOG("Number: {}", reader.GetPacketNumber() - 1);
 			BitReader packetReader = pkt.CreateReader();
+			json packetData = router.HandlePacket(pkt.header.opcode, packetReader, pktNumber);
+			json fullPacket = JsonSerializer::SerializeFullPacket(pkt.header, build, pktNumber, packetData);
 
-			json packetData = router.HandlePacket(pkt.header.opcode, packetReader);
-			json fullPacket = JsonSerializer::SerializeFullPacket(pkt.header, build, packetData);
-
-			LOG("{}", fullPacket.dump(2));
+			//LOG("{}", fullPacket.dump(4));
 			parsedCount++;
 			pktOpt = reader.ReadNextPacket();
 		}

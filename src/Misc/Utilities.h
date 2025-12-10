@@ -7,9 +7,10 @@
 #include <fmt/core.h>
 
 #include "Define.h"
-#include "Parser/Direction.h"
+#include "Enums/Direction.h"
+#include "Enums/TargetFlags.h"
 
-namespace Utilities
+namespace PktParser::Misc
 {
 	template<typename T>
 	inline std::string FormatUnixMilliseconds(T value)
@@ -39,9 +40,9 @@ namespace Utilities
 		return fmt::format("{}.{:03d}", buffer, ms);
 	}
 
-	inline char const* DirectionToString(PktParser::Direction dir)
+	inline char const* DirectionToString(PktParser::Enums::Direction dir)
 	{
-		using PktParser::Direction;
+		using PktParser::Enums::Direction;
 
 		switch (dir)
 		{
@@ -58,6 +59,58 @@ namespace Utilities
 		default:
 			return "UNKNOWN";
 		}
+	}
+
+	inline std::string GetTargetFlagName(uint32 flags)
+	{
+		using PktParser::Enums::TargetFlag;
+
+		if (flags == TargetFlag::Self)
+			return "Self (0x00000000)";
+
+		std::string result = fmt::format("0x{:08X} (", flags);
+		bool first = true;
+
+		auto addFlag = [&](TargetFlag flag, const char* name)
+		{
+			if (flags & flag)
+			{
+				if (!first)
+					result += " | ";
+				result += name;
+				first = false;
+			}
+		};
+
+		addFlag(TargetFlag::SpellDynamic1, "SpellDynamic1");
+		addFlag(TargetFlag::Unit, "Unit");
+		addFlag(TargetFlag::UnitRaid, "UnitRaid");
+		addFlag(TargetFlag::UnitParty, "UnitParty");
+		addFlag(TargetFlag::Item, "Item");
+		addFlag(TargetFlag::SourceLocation, "SourceLocation");
+		addFlag(TargetFlag::DestinationLocation, "DestinationLocation");
+		addFlag(TargetFlag::UnitEnemy, "UnitEnemy");
+		addFlag(TargetFlag::UnitAlly, "UnitAlly");
+		addFlag(TargetFlag::CorpseEnemy, "CorpseEnemy");
+		addFlag(TargetFlag::UnitDead, "UnitDead");
+		addFlag(TargetFlag::GameObject, "GameObject");
+		addFlag(TargetFlag::TradeItem, "TradeItem");
+		addFlag(TargetFlag::NameString, "NameString");
+		addFlag(TargetFlag::GameObjectItem, "GameObjectItem");
+		addFlag(TargetFlag::CorpseAlly, "CorpseAlly");
+		addFlag(TargetFlag::UnitMinipet, "UnitMinipet");
+		addFlag(TargetFlag::Glyph, "Glyph");
+		addFlag(TargetFlag::DestinationTarget, "DestinationTarget");
+		addFlag(TargetFlag::ExtraTargets, "ExtraTargets");
+		addFlag(TargetFlag::UnitPassenger, "UnitPassenger");
+		addFlag(TargetFlag::Unk400000, "Unk400000");
+		addFlag(TargetFlag::Unk1000000, "Unk1000000");
+		addFlag(TargetFlag::Unk4000000, "Unk4000000");
+		addFlag(TargetFlag::Unk10000000, "Unk10000000");
+		addFlag(TargetFlag::Unk40000000, "Unk40000000");
+
+		result += first ? "None)" : ")";
+		return result;
 	}
 }
 

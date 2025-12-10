@@ -3,7 +3,7 @@
 
 #include "Misc/Define.h"
 
-namespace PktParser
+namespace PktParser::Enums
 {
 	enum class GuidType : uint8
 	{

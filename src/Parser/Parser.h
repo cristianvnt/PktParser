@@ -3,6 +3,7 @@
 
 #include "Reader/BitReader.h"
 #include "Opcodes.h"
+#include "JsonSerializer.h"
 
 namespace PktParser
 {
@@ -14,9 +15,9 @@ namespace PktParser
 		static void RegisterHandlers(PktRouter& router);
 		
 		// parsers
-		static void ParseAuthChallenge(BitReader& reader);
-		static void ParseSpellGo(BitReader& reader);
-		static void ParseUpdateWorldState(BitReader& reader);
+		static json ParseAuthChallenge(BitReader& reader);
+		static json ParseSpellGo(BitReader& reader);
+		static json ParseUpdateWorldState(BitReader& reader);
 	};
 }
 

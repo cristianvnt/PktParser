@@ -18,8 +18,7 @@ int main(int argc, char* argv[])
 
 	if (argc < 2)
 	{
-		fmt::print(stderr, "Usage: {} <pkt_file>\n", argv[0]);
-		fmt::print(stderr, "Or drag and drop a .pkt file onto the executable\n");
+		LOG("Usage: {} <path-to-pkt-file>", argv[0]);
 		return 1;
 	}
 
@@ -31,31 +30,30 @@ int main(int argc, char* argv[])
 		PktRouter router;
 		Parser::RegisterHandlers(router);
 
-		LOG("===== Reading Packets =====");
-		LOG("Build: {}", reader.GetBuildVersion());
-
 		auto startTime = std::chrono::high_resolution_clock::now();
 
+		uint32 build = reader.GetFileHeader().clientBuild;
 		std::optional<Pkt> pktOpt = reader.ReadNextPacket();
 		size_t parsedCount = 0;
+		size_t skippedCount = 0;
 
 		while (pktOpt.has_value())
 		{
 			Pkt const& pkt = pktOpt.value();
+			if (!IsKnownOpcode(pkt.header.opcode))
+			{
+				skippedCount++;
+				pktOpt = reader.ReadNextPacket();
+				continue;
+			}
 
-			/*LOG("{}: {} Opcode 0x{:06X} | Length: {} | ConnIdx: {} | Time: {} | Number: {}",
-				Utilities::DirectionToString(pkt.header.direction),
-				GetOpcodeName(pkt.header.opcode),
-				pkt.header.opcode,
-				pkt.header.packetLength - 4,
-				pkt.header.connectionIndex,
-				Utilities::FormatUnixMilliseconds(pkt.header.timestamp),
-				reader.GetPacketNumber() - 1
-			);*/
-
+			LOG("Number: {}", reader.GetPacketNumber() - 1);
 			BitReader packetReader = pkt.CreateReader();
-			router.HandlePacket(pkt.header.opcode, packetReader);
 
+			json packetData = router.HandlePacket(pkt.header.opcode, packetReader);
+			json fullPacket = JsonSerializer::SerializeFullPacket(pkt.header, build, packetData);
+
+			LOG("{}", fullPacket.dump(2));
 			parsedCount++;
 			pktOpt = reader.ReadNextPacket();
 		}
@@ -63,7 +61,7 @@ int main(int argc, char* argv[])
 		auto endTime = std::chrono::high_resolution_clock::now();
 		auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
 
-		LOG(">>>>> PARSE COMPLETE - {} packets parsed <<<<<", parsedCount);
+		LOG(">>>>> PARSE COMPLETE - {} packets parsed, {} skipped <<<<<", parsedCount, skippedCount);
 		LOG("Total time: {}ms ({:.2f} seconds)", duration.count(), duration.count() / 1000.0);
 	}
 	catch (std::exception const& e)

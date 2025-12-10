@@ -6,10 +6,11 @@
 
 #include <functional>
 #include <unordered_map>
+#include <nlohmann/json.hpp>
 
 namespace PktParser
 {
-	using PktHandler = std::function<void(BitReader&)>;
+	using PktHandler = json(*)(BitReader&);
 
 	class PktRouter
 	{
@@ -22,14 +23,12 @@ namespace PktParser
 			_handlers[static_cast<uint32>(opcode)] = handler;
 		}
 
-		bool HandlePacket(uint32 opcode, BitReader& reader)
+		json HandlePacket(uint32 opcode, BitReader& reader)
 		{
-			auto it = _handlers.find(opcode);
-			if (it == _handlers.end())
-				return false;
+			if (auto it = _handlers.find(opcode); it != _handlers.end())
+				return it->second(reader);
 
-			it->second(reader);
-			return true;
+			return json::object();
 		}
 	};
 }

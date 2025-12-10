@@ -34,44 +34,30 @@ namespace PktParser
 		if (!std::equal(magik, magik + 3, "PKT"))
 			throw ParseException("Invalid PKT file");
 
-		LOG("Valid PKT file detected");
-
 		_file.read(reinterpret_cast<char*>(&_fileHeader.version), sizeof(_fileHeader.version));
-		LOG("PKT Version: 0x{:04X}", _fileHeader.version);
 
 		_file.read(reinterpret_cast<char*>(&_fileHeader.snifferId), sizeof(_fileHeader.snifferId));
-		LOG("Sniffer ID: 0x{:02X} ({})", _fileHeader.snifferId, static_cast<char>(_fileHeader.snifferId));
 
 		_file.read(reinterpret_cast<char*>(&_fileHeader.clientBuild), sizeof(_fileHeader.clientBuild));
-		LOG("Client Build: {}", _fileHeader.clientBuild);
 
 		char locale[5] = { 0 };
 		_file.read(locale, 4);
 		_fileHeader.locale = std::string(locale, 4);
-		LOG("Locale: {}", _fileHeader.locale);
 
 		_file.seekg(40, std::ios::cur); // skip session key
 
 		_file.read(reinterpret_cast<char*>(&_fileHeader.startTime), sizeof(_fileHeader.startTime));
-		LOG("Capture Start Time: {}", Utilities::FormatUnixMilliseconds(_fileHeader.startTime));
 
 		_file.read(reinterpret_cast<char*>(&_fileHeader.startTickCount), sizeof(_fileHeader.startTickCount));
-		LOG("Start Tick Count: {} ms", _fileHeader.startTickCount);
 
 		int32 additionalLength;
 		_file.read(reinterpret_cast<char*>(&additionalLength), sizeof(additionalLength));
 
 		_fileHeader.snifferVersion = 0;
 		if ((_fileHeader.snifferId == 0x15 || _fileHeader.snifferId == 0x16) && additionalLength >= 2)
-		{
 			_file.read(reinterpret_cast<char*>(&_fileHeader.snifferVersion), sizeof(_fileHeader.snifferVersion));
-			LOG("Sniffer Version: 0x{:04X}", _fileHeader.snifferVersion);
-		}
 		else
-		{
 			_file.seekg(additionalLength, std::ios::cur);
-			LOG("Skipped {} bytes of file header additional data", additionalLength);
-		}
 
 		LOG(">>>>> File Header Parsed Successfully <<<<<");
 		LOG("");

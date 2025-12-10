@@ -1,10 +1,12 @@
 #include "WowGuid.h"
 
+#include <fmt/core.h>
+
 namespace PktParser
 {
-	uint8 WowGuid128::GetType() const
+	GuidType WowGuid128::GetType() const
 	{
-		return (High >> 58) & 0x3F;
+		return static_cast<GuidType>((High >> 58) & 0x3F);
 	}
 
 	uint16 WowGuid128::GetRealmId() const
@@ -40,6 +42,26 @@ namespace PktParser
 	bool WowGuid128::IsEmpty() const
 	{
 		return Low == 0 && High == 0;
+	}
+
+	bool WowGuid128::HasEntry() const
+	{
+		return GuidTypeHasEntry(GetType());
+	}
+
+	std::string WowGuid128::ToString() const
+	{
+		if (IsEmpty())
+			return "Full: 0x0";
+
+		if (HasEntry())
+		{
+			return fmt::format("Full: 0x{:016X}{:016X} {}/{} R{}/S{} Map: {} Entry: {} Low: {}", High, Low,
+				GuidTypeToString(GetType()), GetSubType(), GetRealmId(), GetServerId(), GetMapId(), GetEntry(), GetLow());
+		}
+
+		return fmt::format("Full: 0x{:016X}{:016X} {}/{} R{}/S{} Map: {} Low: {}", High, Low,
+			GuidTypeToString(GetType()), GetSubType(), GetRealmId(), GetServerId(), GetMapId(), GetLow());
 	}
 
 	WowGuid128 ReadGuid128(BitReader& reader)

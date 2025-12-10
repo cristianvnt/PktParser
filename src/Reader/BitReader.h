@@ -26,6 +26,8 @@ public:
 
 	void ResetBitReader();
 
+	size_t GetBytePosition() const { return _bytePos; }
+	size_t GetLength() const { return _length; }
 	uint8 const* GetCurrentPtr() const;
 	void Skip(size_t bytes);
 

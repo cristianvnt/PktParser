@@ -3,6 +3,7 @@
 
 #include "Misc/Define.h"
 #include "Reader/BitReader.h"
+#include "Parser/GuidTypes.h"
 
 namespace PktParser
 {
@@ -11,7 +12,7 @@ namespace PktParser
 		uint64 Low;
 		uint64 High;
 
-		uint8 GetType() const;
+		GuidType GetType() const;
 		uint16 GetRealmId() const;
 		uint16 GetMapId() const;
 		uint32 GetEntry() const;
@@ -19,6 +20,9 @@ namespace PktParser
 		uint32 GetServerId() const;
 		uint64 GetLow() const;
 		bool IsEmpty() const;
+		bool HasEntry() const;
+
+		std::string ToString() const;
 	};
 
 	WowGuid128 ReadGuid128(BitReader& reader);

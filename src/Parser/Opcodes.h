@@ -3,6 +3,7 @@
 
 #include <unordered_map>
 #include <string>
+#include <fmt/core.h>
 
 #include "Misc/Define.h"
 
@@ -10,6 +11,7 @@ namespace PktParser
 {
 	enum class Opcode : uint32
 	{
+		NULL_OPCODE							= 0,
 		SMSG_AUTH_CHALLENGE					= 0x3D0000,
 		CMSG_AUTH_SESSION					= 0x350001,
 		SMSG_SPELL_START					= 0x4D002B,
@@ -20,7 +22,7 @@ namespace PktParser
 	static std::unordered_map<uint32, std::string> const OpcodeNames =
 	{
 		{0x3D0000, "SMSG_AUTH_CHALLENGE"},
-		{0x3F0001, "CMSG_AUTH_SESSION"},
+		{0x350001, "CMSG_AUTH_SESSION"},
 		{0x4D002B, "SMSG_SPELL_START"},
 		{0x4D002A, "SMSG_SPELL_GO"},
 		{0x3601E4, "SMSG_UPDATE_WORLD_STATE"}
@@ -28,10 +30,15 @@ namespace PktParser
 
 	inline std::string GetOpcodeName(uint32 opcode)
 	{
-		if (OpcodeNames.contains(opcode))
-			return OpcodeNames.at(opcode);
+		if (auto it = OpcodeNames.find(opcode); it != OpcodeNames.end())
+			return it->second;
 
-		return "UNKNOWN";
+		return fmt::format("UNKNOWN OPCODE 0x{:06X}", opcode);
+	}
+
+	inline bool IsKnownOpcode(uint32 opcode)
+	{
+		return OpcodeNames.find(opcode) != OpcodeNames.end();
 	}
 }
 

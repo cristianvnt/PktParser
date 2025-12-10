@@ -64,13 +64,11 @@ namespace PktParser
 
 	struct SpellHitStatus
 	{
-		WowGuid128 Target;
 		uint8 HitResult;
 	};
 
 	struct SpellMissStatus
 	{
-		WowGuid128 Target;
 		uint8 MissReason;
 		uint8 ReflectStatus;
 	};

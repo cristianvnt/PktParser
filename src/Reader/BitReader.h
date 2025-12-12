@@ -5,6 +5,7 @@
 
 #include <vector>
 #include <string>
+#include <cstring>
 
 namespace PktParser::Reader
 {

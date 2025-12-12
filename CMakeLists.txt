@@ -18,13 +18,22 @@ FetchContent_Declare(json
 )
 FetchContent_MakeAvailable(json)
 
+find_library(CASSANDRA_LIBRARY NAMES cassandra REQUIRED)
+find_path(CASSANDRA_INCLUDE_DIR NAMES cassandra.h REQUIRED)
+find_package(ZLIB REQUIRED)
+
 file(GLOB_RECURSE SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp)
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 
+target_include_directories(${PROJECT_NAME} PRIVATE 
+	${CMAKE_CURRENT_SOURCE_DIR}/src
+	${CASSANDRA_INCLUDE_DIR}
+)
+
 target_link_libraries(${PROJECT_NAME} PRIVATE 
 	fmt::fmt
 	nlohmann_json::nlohmann_json
+	${CASSANDRA_LIBRARY}
+	${ZLIB_LIBRARIES}
 )
-
-target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)

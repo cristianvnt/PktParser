@@ -10,6 +10,7 @@
 #include "Parser/Parser.h"
 #include "Parser/PktHandler.h"
 #include "Parser/JsonSerializer.h"
+#include "Database/Database.h"
 
 using namespace PktParser;
 using namespace PktParser::Reader;
@@ -26,6 +27,8 @@ int main(int argc, char* argv[])
 
 	try
 	{
+		Db::Database db;
+
 		PktFileReader reader(argv[1]);
 		reader.ParseFileHeader();
 		
@@ -53,11 +56,14 @@ int main(int argc, char* argv[])
 			BitReader packetReader = pkt.CreateReader();
 			json packetData = router.HandlePacket(pkt.header.opcode, packetReader, pktNumber);
 			json fullPacket = JsonSerializer::SerializeFullPacket(pkt.header, build, pktNumber, packetData);
-
-			LOG("{}", fullPacket.dump(4));
+			
+			db.StorePacket(fullPacket);
+			//LOG("{}", fullPacket.dump(4));
 			parsedCount++;
 			pktOpt = reader.ReadNextPacket();
 		}
+
+		db.Flush();
 
 		auto endTime = std::chrono::high_resolution_clock::now();
 		auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);

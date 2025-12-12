@@ -54,7 +54,7 @@ int main(int argc, char* argv[])
 			json packetData = router.HandlePacket(pkt.header.opcode, packetReader, pktNumber);
 			json fullPacket = JsonSerializer::SerializeFullPacket(pkt.header, build, pktNumber, packetData);
 
-			//LOG("{}", fullPacket.dump(4));
+			LOG("{}", fullPacket.dump(4));
 			parsedCount++;
 			pktOpt = reader.ReadNextPacket();
 		}

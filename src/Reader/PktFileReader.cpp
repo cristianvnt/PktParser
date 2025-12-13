@@ -15,9 +15,7 @@ namespace PktParser::Reader
 		_file.open(filepath, std::ios::binary);
 
 		if (!_file.is_open())
-			throw ParseException("Failed to open: " + filepath);
-
-		LOG("Opened file: {}", filepath);
+			throw ParseException{ "Failed to open: " + filepath };
 	}
 
 	PktFileReader::~PktFileReader()
@@ -28,13 +26,11 @@ namespace PktParser::Reader
 
 	void PktFileReader::ParseFileHeader()
 	{
-		LOG(">>>>> PARSING FILE HEADER <<<<<");
-
 		char magik[3];
 		_file.read(magik, 3);
 
 		if (!std::equal(magik, magik + 3, "PKT"))
-			throw ParseException("Invalid PKT file");
+			throw ParseException{ "Invalid PKT file" };
 
 		_file.read(reinterpret_cast<char*>(&_fileHeader.version), sizeof(_fileHeader.version));
 
@@ -60,9 +56,6 @@ namespace PktParser::Reader
 			_file.read(reinterpret_cast<char*>(&_fileHeader.snifferVersion), sizeof(_fileHeader.snifferVersion));
 		else
 			_file.seekg(additionalLength, std::ios::cur);
-
-		LOG(">>>>> File Header Parsed Successfully <<<<<");
-		LOG("");
 	}
 
 	std::optional<Pkt> PktFileReader::ReadNextPacket()
@@ -81,12 +74,10 @@ namespace PktParser::Reader
 				throw EndOfStreamException{};
 
 			if (header.packetLength >= 4)
-			{
 				header.opcode = static_cast<uint32>(packetData[0])
 					| (static_cast<uint32>(packetData[1]) << 8)
 					| (static_cast<uint32>(packetData[2]) << 16)
 					| (static_cast<uint32>(packetData[3]) << 24);
-			}
 			else
 				header.opcode = 0;
 

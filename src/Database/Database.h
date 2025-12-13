@@ -7,11 +7,11 @@
 #include <cassandra.h>
 #include <vector>
 #include <string>
+#include <deque>
+#include <mutex>
 
 namespace PktParser::Db
 {
-	static constexpr size_t BATCH_SIZE = 10;
-
 	class Database
 	{
 	private:
@@ -19,10 +19,17 @@ namespace PktParser::Db
 		CassSession* _session;
 		CassPrepared* _preparedInsert;
 
-		std::vector<json> _batch;
+		static constexpr size_t MAX_PENDING = 1000;
+		std::deque<CassFuture*> _pendingInserts;
+		std::mutex _pendingMutex;
+
+		size_t _totalInserted{};
+		size_t _totalFailed{};
 		
 		void CreateKeyspaceAndTable();
 		void PrepareStmts();
+
+		void CheckOldestInserts(size_t count);
 
 	public:
 		Database();
@@ -30,6 +37,9 @@ namespace PktParser::Db
 
 		void StorePacket(json const& pkt);
 		void Flush();
+
+		size_t GetTotalInserted() const { return _totalInserted; }
+		size_t GetTotalFailed() const { return _totalFailed; }
 	};
 }
 

@@ -11,8 +11,6 @@ namespace PktParser::Db
     Database::Database()
         :_cluster{ nullptr }, _session{ nullptr }, _preparedInsert{ nullptr }
     {
-        _batch.reserve(BATCH_SIZE);
-
         _cluster = cass_cluster_new();
         cass_cluster_set_contact_points(_cluster, "127.0.0.1");
 
@@ -30,21 +28,24 @@ namespace PktParser::Db
         }
 
         cass_future_free(connectFuture);
-        LOG("Your bluetooth device has connected successfuly!");
         
         CreateKeyspaceAndTable();
         PrepareStmts();
+
+        LOG("The bluetooth device has connected successfully");
     }
 
     Database::~Database()
     {
+        LOG("Shutting down db...");
+
         Flush();
 
         if (_preparedInsert)
             cass_prepared_free(_preparedInsert);
 
         CassFuture* closeFuture = cass_session_close(_session);
-        //cass_future_wait(closeFuture);
+        cass_future_wait(closeFuture);
         cass_future_free(closeFuture);
 
         cass_session_free(_session);
@@ -58,6 +59,7 @@ namespace PktParser::Db
 
         CassStatement* stmt = cass_statement_new(createKeyspace, 0);
         CassFuture* future = cass_session_execute(_session, stmt);
+        cass_future_wait(future);
 
         if (cass_future_error_code(future) != CASS_OK)
         {
@@ -77,11 +79,13 @@ namespace PktParser::Db
                 "packet_name text,"
                 "opcode text,"
                 "timestamp text,"
-                "build int"
+                "build int,"
+                "pkt_bson blob"
             ")";
 
         stmt = cass_statement_new(createTable, 0);
         future = cass_session_execute(_session, stmt);
+        cass_future_wait(future);
 
         if (cass_future_error_code(future) != CASS_OK)
         {
@@ -93,17 +97,16 @@ namespace PktParser::Db
         
         cass_future_free(future);
         cass_statement_free(stmt);
-
-        LOG("READYYYYYYY");
     }
 
     void Database::PrepareStmts()
     {
         char const* insertQuery =
-            "INSERT INTO wow_packets.packets (packet_number, direction, packet_name, opcode, timestamp, build) "
-            "VALUES (?, ?, ?, ?, ?, ?)";
+            "INSERT INTO wow_packets.packets (packet_number, direction, packet_name, opcode, timestamp, build, pkt_bson) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)";
 
         CassFuture* prepareFuture = cass_session_prepare(_session, insertQuery);
+        cass_future_wait(prepareFuture);
         
         if (cass_future_error_code(prepareFuture) != CASS_OK)
         {
@@ -118,62 +121,76 @@ namespace PktParser::Db
         cass_future_free(prepareFuture);
     }
 
+    void Database::CheckOldestInserts(size_t count)
+    {
+        size_t toCheck = std::min(count, _pendingInserts.size());
+
+        for (size_t i = 0; i < toCheck; ++i)
+        {
+            CassFuture* future = _pendingInserts.front();
+            _pendingInserts.pop_front();
+
+            cass_future_wait(future);
+
+            if (cass_future_error_code(future) == CASS_OK)
+                _totalInserted++;
+            else
+            {
+                _totalFailed++;
+
+                const char* msg;
+                size_t msgLen;
+                cass_future_error_message(future, &msg, &msgLen);
+                LOG("Insert failed: {}", std::string(msg, msgLen));
+            }
+
+            cass_future_free(future);
+        }
+    }
+
     void Database::StorePacket(json const& pkt)
     {
-        _batch.push_back(pkt);
-        if (_batch.size() >= BATCH_SIZE)
-            Flush();
+        {
+            std::lock_guard<std::mutex> lock(_pendingMutex);
+            if (_pendingInserts.size() >= MAX_PENDING)
+                CheckOldestInserts(100);
+        }
+
+        CassStatement* stmt = cass_prepared_bind(_preparedInsert);
+
+        cass_statement_bind_int32(stmt, 0, pkt["Number"].get<int>());
+        cass_statement_bind_string(stmt, 1, pkt["Header"]["Direction"].get<std::string>().c_str());
+        cass_statement_bind_string(stmt, 2, pkt["Header"]["PacketName"].get<std::string>().c_str());
+        cass_statement_bind_string(stmt, 3, pkt["Header"]["Opcode"].get<std::string>().c_str());
+        cass_statement_bind_string(stmt, 4, pkt["Header"]["Timestamp"].get<std::string>().c_str());
+        cass_statement_bind_int32(stmt, 5, pkt["Header"]["Build"].get<int>());
+
+        std::vector<uint8> bson = json::to_bson(pkt);
+        cass_statement_bind_bytes(stmt, 6, bson.data(), bson.size());
+        //LOG("{}", json::from_bson(bson).dump(4));
+
+        CassFuture* future = cass_session_execute(_session, stmt);
+
+        {
+            std::lock_guard<std::mutex> lock(_pendingMutex);
+            _pendingInserts.push_back(future);
+        }
+        cass_statement_free(stmt);
     }
 
     void Database::Flush()
     {
-        if (_batch.empty())
-            return;
+        std::lock_guard<std::mutex> lock(_pendingMutex);
 
-        const size_t MAX_BATCH_SIZE_BYTES = 45000;
-        size_t index = 0;
-            
-        while (index < _batch.size())
+        if (_pendingInserts.empty())
         {
-            CassBatch* batch = cass_batch_new(CASS_BATCH_TYPE_UNLOGGED);
-            size_t batchSizeBytes = 0;
-
-            size_t batchStartIndex = index;
-            std::string pktJson;
-
-            while (index < _batch.size())
-            {
-                const json& pkt = _batch[index];
-                pktJson = pkt.dump();
-                size_t pktSize = pktJson.size() + 100;
-
-                if (batchSizeBytes + pktSize > MAX_BATCH_SIZE_BYTES)
-                    break; // batch full
-
-                CassStatement* stmt = cass_prepared_bind(_preparedInsert);
-                cass_statement_bind_int32(stmt, 0, pkt["Number"].get<int>());
-                cass_statement_bind_string(stmt, 1, pkt["Header"]["Direction"].get<std::string>().c_str());
-                cass_statement_bind_string(stmt, 2, pkt["Header"]["PacketName"].get<std::string>().c_str());
-                cass_statement_bind_string(stmt, 3, pkt["Header"]["Opcode"].get<std::string>().c_str());
-                cass_statement_bind_string(stmt, 4, pkt["Header"]["Timestamp"].get<std::string>().c_str());
-                cass_statement_bind_int32(stmt, 5, pkt["Header"]["Build"].get<int>());
-                //cass_statement_bind_string(stmt, 6, pkt.dump().c_str());
-
-                cass_batch_add_statement(batch, stmt);
-                cass_statement_free(stmt);
-
-                batchSizeBytes += pktSize;
-                index++;
-            }
-
-            //LOG("Inserting batch of {} packets...", index - batchStartIndex);
-        
-            CassFuture* batchFuture = cass_session_execute_batch(_session, batch);
-            cass_future_free(batchFuture);
-            cass_batch_free(batch);
+            LOG("No pending inserts to flush");
+            return;
         }
 
-         LOG("Flushed {} packets safely", _batch.size());
-        _batch.clear();
+        LOG("Flushing {} pending inserts...", _pendingInserts.size());
+        CheckOldestInserts(_pendingInserts.size());
+
+        LOG("FLUSH Complete: {} inserted, {} failed", _totalInserted, _totalFailed);
     }
 }

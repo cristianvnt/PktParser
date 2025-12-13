@@ -1,9 +1,10 @@
 #include <fmt/core.h>
-#include <fstream>
 #include <cstdint>
 #include <filesystem>
 #include <iostream>
+#include <future>
 
+#include "Misc/Utilities.h"
 #include "Misc/Logger.h"
 #include "Reader/BitReader.h"
 #include "Reader/PktFileReader.h"
@@ -14,6 +15,7 @@
 
 using namespace PktParser;
 using namespace PktParser::Reader;
+using namespace PktParser::Misc;
 
 int main(int argc, char* argv[])
 {
@@ -24,7 +26,7 @@ int main(int argc, char* argv[])
 		LOG("Usage: {} <path-to-pkt-file>", argv[0]);
 		return 1;
 	}
-
+	
 	try
 	{
 		Db::Database db;
@@ -45,6 +47,7 @@ int main(int argc, char* argv[])
 		while (pktOpt.has_value())
 		{
 			Pkt const& pkt = pktOpt.value();
+
 			if (!IsKnownOpcode(pkt.header.opcode))
 			{
 				skippedCount++;
@@ -56,19 +59,25 @@ int main(int argc, char* argv[])
 			BitReader packetReader = pkt.CreateReader();
 			json packetData = router.HandlePacket(pkt.header.opcode, packetReader, pktNumber);
 			json fullPacket = JsonSerializer::SerializeFullPacket(pkt.header, build, pktNumber, packetData);
-			
+
 			db.StorePacket(fullPacket);
-			//LOG("{}", fullPacket.dump(4));
 			parsedCount++;
+
+			if (parsedCount % 1000 == 0)
+				LOG("Processed {} packets...", parsedCount);
+
 			pktOpt = reader.ReadNextPacket();
 		}
 
+		LOG("Parsing complete, flushing...");
 		db.Flush();
 
 		auto endTime = std::chrono::high_resolution_clock::now();
 		auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
 
 		LOG(">>>>> PARSE COMPLETE - {} packets parsed, {} skipped <<<<<", parsedCount, skippedCount);
+		LOG("Parsed: {}, Skipped: {}", parsedCount, skippedCount);
+        LOG("DB Stats: {} inserted, {} failed", db.GetTotalInserted(), db.GetTotalFailed());
 		LOG("Total time: {}ms ({:.2f} seconds)", duration.count(), duration.count() / 1000.0);
 	}
 	catch (std::exception const& e)

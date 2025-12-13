@@ -83,14 +83,13 @@ namespace PktParser::Reader
 	std::string BitReader::ReadWoWString(uint32 len /*= 0*/)
 	{
 		if (len == 0)
-			return "";
+			return {};
 
-		std::vector<uint8> bytes(len);
-		for (uint32 i = 0; i < len; ++i)
-			bytes[i] = ReadUInt8();
+		uint8 const* ptr = GetCurrentPtr();
+		Skip(len);
+		uint8 const* newEnd = std::find(ptr, ptr + len, 0);
 
-		auto newEnd = std::remove_if(bytes.begin(), bytes.end(), [](uint8 b) { return b != 0; });
-		return std::string(bytes.begin(), newEnd);
+		return std::string(reinterpret_cast<char const*>(ptr), newEnd - ptr);
 	}
 
 	uint32 BitReader::ReadBits(uint8 numBits)

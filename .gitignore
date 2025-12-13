@@ -1,3 +1,5 @@
+.env
+
 # build dirs
 build/
 cmake-build-*/

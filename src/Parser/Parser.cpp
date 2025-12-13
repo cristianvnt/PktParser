@@ -27,7 +27,7 @@ namespace PktParser
 		router.RegisterHandler(Opcode::SMSG_UPDATE_WORLD_STATE, ParseUpdateWorldState);
 	}
 
-	json Parser::ParseAuthChallenge(BitReader& reader, uint32 pktNumber)
+	json Parser::ParseAuthChallenge(BitReader& reader, [[maybe_unused]] uint32 pktNumber)
 	{
 		reader.ReadUInt32(); // skip opcode
 		reader.ResetBitReader();
@@ -46,7 +46,7 @@ namespace PktParser
 		return loc;
 	}
 
-	json Parser::ParseSpellGo(BitReader& reader, uint32 pktNumber)
+	json Parser::ParseSpellGo(BitReader& reader, [[maybe_unused]] uint32 pktNumber)
 	{
 		reader.ReadUInt32(); // skip opcode
 
@@ -121,7 +121,7 @@ namespace PktParser
 		return JsonSerializer::SerializeSpellGo(data);
 	}
 
-	json Parser::ParseUpdateWorldState(BitReader& reader, uint32 pktNumber)
+	json Parser::ParseUpdateWorldState(BitReader& reader, [[maybe_unused]] uint32 pktNumber)
 	{
 		reader.ReadUInt32(); // skip opcode
 
@@ -133,7 +133,7 @@ namespace PktParser
 		return JsonSerializer::SerializeUpdateWorldState(worldStateInfo, hidden);
 	}
 
-	void Parser::ParseSpellTargetData(BitReader& reader, uint32 spellID, SpellTargetData& targetData)
+	void Parser::ParseSpellTargetData(BitReader& reader, [[maybe_unused]] uint32 spellID, SpellTargetData& targetData)
 	{
 		reader.ResetBitReader();
 

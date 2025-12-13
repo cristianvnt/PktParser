@@ -21,10 +21,10 @@
 #include <string>
 #include <fmt/core.h>
 
-using json = nlohmann::ordered_json;
-
 namespace PktParser
 {
+	using json = nlohmann::ordered_json;
+
 	class JsonSerializer
 	{
 	public:
@@ -43,4 +43,4 @@ namespace PktParser
 	};
 }
 
-#endif // !JSON_SERIALIZER_H
+#endif

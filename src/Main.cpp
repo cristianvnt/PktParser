@@ -13,9 +13,17 @@
 #include "Parser/JsonSerializer.h"
 #include "Database/Database.h"
 
+#ifdef PARALLEL_PARSING_MODE
+#include "Parser/ParallelProcessor.h"
+#endif
+
 using namespace PktParser;
 using namespace PktParser::Reader;
 using namespace PktParser::Misc;
+namespace PktParser
+{
+	struct Stats;
+}
 
 int main(int argc, char* argv[])
 {
@@ -26,6 +34,12 @@ int main(int argc, char* argv[])
 		LOG("Usage: {} <path-to-pkt-file>", argv[0]);
 		return 1;
 	}
+
+#ifdef SYNC_PARSING_MODE
+	LOG("Running in SYNC mode");
+#else
+	LOG("Running in PARALLEL mode");
+#endif	
 	
 	try
 	{
@@ -37,9 +51,11 @@ int main(int argc, char* argv[])
 		PktRouter router;
 		Parser::RegisterHandlers(router);
 
+		uint32 build = reader.GetFileHeader().clientBuild;
+
+#ifdef SYNC_PARSING_MODE
 		auto startTime = std::chrono::high_resolution_clock::now();
 
-		uint32 build = reader.GetFileHeader().clientBuild;
 		std::optional<Pkt> pktOpt = reader.ReadNextPacket();
 		size_t parsedCount = 0;
 		size_t skippedCount = 0;
@@ -79,6 +95,15 @@ int main(int argc, char* argv[])
 		LOG("Parsed: {}, Skipped: {}", parsedCount, skippedCount);
         LOG("DB Stats: {} inserted, {} failed", db.GetTotalInserted(), db.GetTotalFailed());
 		LOG("Total time: {}ms ({:.2f} seconds)", duration.count(), duration.count() / 1000.0);
+#else
+		auto stats = ParallelProcessor::ProcessAllPackets(reader, router, db, build);
+
+		LOG(">>>>> PARSE COMPLETE <<<<<");
+        LOG("Parsed: {}, Skipped: {}", stats.ParsedCount, stats.SkippedCount);
+        LOG("DB Stats: {} inserted, {} failed", db.GetTotalInserted(), db.GetTotalFailed());
+        LOG("Total time: {}ms ({:.2f} seconds)", stats.TotalTime, stats.TotalTime / 1000.0);
+#endif
+
 	}
 	catch (std::exception const& e)
 	{

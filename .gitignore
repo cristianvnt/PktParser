@@ -6,7 +6,7 @@ cmake-build-*/
 out/
 
 # parsed files
-*.parsed.txt
+*.log
 
 # CMake generated files
 CMakeCache.txt

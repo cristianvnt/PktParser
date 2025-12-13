@@ -3,6 +3,7 @@
 
 #include "Misc/Define.h"
 #include "Reader/BitReader.h"
+#include "Opcodes.h"
 #include "Reader/PktFileReader.h"
 
 #include <functional>
@@ -11,6 +12,7 @@
 
 namespace PktParser
 {
+	using json = nlohmann::ordered_json;
 	using PktHandler = std::function<json(Reader::BitReader&, uint32)>;
 
 	class PktRouter
@@ -21,7 +23,7 @@ namespace PktParser
 	public:
 		void RegisterHandler(Opcode opcode, PktHandler handler)
 		{
-			_handlers[static_cast<uint32>(opcode)] = handler;
+			_handlers[static_cast<uint32>(opcode)] = std::move(handler);
 		}
 
 		json HandlePacket(uint32 opcode, Reader::BitReader& reader, uint32 pktNumber)

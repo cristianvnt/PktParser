@@ -26,11 +26,15 @@ namespace PktParser
 			_handlers[static_cast<uint32>(opcode)] = std::move(handler);
 		}
 
+		bool HasHandler(uint32 opcode) const
+		{
+			return _handlers.contains(opcode);
+		}
+
 		json HandlePacket(uint32 opcode, Reader::BitReader& reader, uint32 pktNumber)
 		{
 			if (auto it = _handlers.find(opcode); it != _handlers.end())
 				return it->second(reader, pktNumber);
-
 			return json{};
 		}
 	};

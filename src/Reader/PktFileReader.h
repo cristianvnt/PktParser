@@ -18,7 +18,7 @@ namespace PktParser::Reader
 		uint16 version;
 		uint8 snifferId;
 		uint32 clientBuild;
-		std::string locale;
+		char locale[4];
 		uint32 startTime;
 		uint32 startTickCount;
 		int16 snifferVersion;
@@ -39,6 +39,7 @@ namespace PktParser::Reader
 	{
 		PktHeader header;
 		std::vector<uint8> data;
+		uint32 pktNumber{};
 		BitReader CreateReader() const { return BitReader(data.data(), data.size()); }
 	};
 
@@ -47,7 +48,7 @@ namespace PktParser::Reader
 	private:
 		std::ifstream _file;
 		PktFileHeader _fileHeader;
-		int _pktNumber;
+		uint32 _pktNumber;
 
 	public:
 		explicit PktFileReader(std::string const& filepath);

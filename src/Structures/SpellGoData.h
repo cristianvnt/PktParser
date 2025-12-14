@@ -3,10 +3,6 @@
 
 #include "Misc/Define.h"
 #include "Misc/WowGuid.h"
-#include "Structures/Packed/SpellCastFixedData.h"
-#include "Structures/Packed/SpellHealPrediction.h"
-#include "Structures/Packed/RuneData.h"
-#include "Structures/Packed/SpellMissStatus.h"
 #include "Structures/SpellTargetData.h"
 #include "Structures/TargetLocation.h"
 
@@ -16,6 +12,64 @@ namespace PktParser::Structures
 {
 	using WowGuid128 = PktParser::Misc::WowGuid128;
 
+#pragma pack(push, 1)
+	struct SpellCastVisual
+	{
+		int32 SpellXSpellVisualID;
+		int32 ScriptVisualID;
+	};
+
+	struct MissileTrajectoryResult
+	{
+		uint32 TravelTime;
+		float Pitch;
+	};
+
+	struct CreatureImmunities
+	{
+		uint32 School;
+		uint32 Value;
+	};
+
+	struct SpellCastFixedData
+	{
+		int32 SpellID;
+		SpellCastVisual Visual;
+		uint32 CastFlags;
+		uint32 CastFlagsEx;
+		uint32 CastFlagsEx2;
+		uint32 CastTime;
+		MissileTrajectoryResult MissileTrajectory;
+		int32 AmmoDisplayID;
+		uint8 DestLocSpellCastIndex;
+		CreatureImmunities Immunities;
+	};
+
+	struct SpellHealPrediction
+	{
+		uint32 Points;
+		uint32 Type;
+	};
+
+	struct SpellMissStatus
+	{
+		uint8 MissReason;
+		uint8 ReflectStatus;
+	};
+
+	struct RuneData
+	{
+		uint8 Start;
+		uint8 Count;
+	};
+
+	struct SpellPowerData
+	{
+		int8 Type = 0;
+		int32 Cost = 0;
+	};
+#pragma pack(pop)
+
 	struct SpellGoData
 	{
 		WowGuid128 CasterGUID;
@@ -23,10 +77,9 @@ namespace PktParser::Structures
 		WowGuid128 CastID;
 		WowGuid128 OriginalCastID;
 
-		Packed::SpellCastFixedData FixedData;
-
-		Packed::SpellHealPrediction HealPrediction;
+		SpellCastFixedData FixedData;
 		WowGuid128 BeaconGUID;
+		SpellHealPrediction HealPrediction;
 
 		uint32 HitTargetsCount;
 		uint32 MissTargetsCount;
@@ -36,13 +89,13 @@ namespace PktParser::Structures
 		bool HasRuneData;
 		uint32 TargetPointsCount;
 
-		std::vector<Packed::SpellMissStatus> MissStatus;
 		SpellTargetData TargetData;
 		std::vector<WowGuid128> HitTargets;
 		std::vector<WowGuid128> MissTargets;
 		std::vector<uint8> HitStatus;
-		std::vector<uint32> RemainingPower;
-		Packed::RuneData Runes;
+		std::vector<SpellMissStatus> MissStatus;
+		std::vector<SpellPowerData> RemainingPower;
+		RuneData Runes;
 		std::vector<uint8> RuneCooldowns;
 		std::vector<TargetLocation> TargetPoints;
 	};

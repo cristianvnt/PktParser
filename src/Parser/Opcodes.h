@@ -2,6 +2,7 @@
 #define OPCODES_H
 
 #include <unordered_map>
+#include <unordered_set>
 #include <string>
 #include <fmt/core.h>
 
@@ -34,11 +35,6 @@ namespace PktParser
 			return it->second;
 
 		return fmt::format("UNKNOWN OPCODE 0x{:06X}", opcode);
-	}
-
-	inline bool IsKnownOpcode(uint32 opcode)
-	{
-		return OpcodeNames.find(opcode) != OpcodeNames.end();
 	}
 }
 

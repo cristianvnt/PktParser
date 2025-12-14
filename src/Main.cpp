@@ -5,6 +5,7 @@
 #include <future>
 
 #include "Misc/Utilities.h"
+#include "Misc/Exceptions.h"
 #include "Misc/Logger.h"
 #include "Reader/BitReader.h"
 #include "Reader/PktFileReader.h"
@@ -12,18 +13,12 @@
 #include "Parser/PktHandler.h"
 #include "Parser/JsonSerializer.h"
 #include "Database/Database.h"
-
-#ifdef PARALLEL_PARSING_MODE
 #include "Parser/ParallelProcessor.h"
-#endif
 
 using namespace PktParser;
 using namespace PktParser::Reader;
 using namespace PktParser::Misc;
-namespace PktParser
-{
-	struct Stats;
-}
+using Stats = PktParser::ParallelProcessor::Stats;
 
 int main(int argc, char* argv[])
 {
@@ -43,7 +38,7 @@ int main(int argc, char* argv[])
 	
 	try
 	{
-		Db::Database db;
+		Db::Database db(50000, 5000);
 
 		PktFileReader reader(argv[1]);
 		reader.ParseFileHeader();
@@ -55,34 +50,39 @@ int main(int argc, char* argv[])
 
 #ifdef SYNC_PARSING_MODE
 		auto startTime = std::chrono::high_resolution_clock::now();
-
-		std::optional<Pkt> pktOpt = reader.ReadNextPacket();
 		size_t parsedCount = 0;
 		size_t skippedCount = 0;
+		size_t failedCount = 0;
 
-		while (pktOpt.has_value())
+		while (true)
 		{
-			Pkt const& pkt = pktOpt.value();
+			std::optional<Pkt> pktOpt = reader.ReadNextPacket();
+			if (!pktOpt.has_value())
+				break;
 
-			if (!IsKnownOpcode(pkt.header.opcode))
+			Pkt const& pkt = pktOpt.value();
+			if (!router.HasHandler(pkt.header.opcode))
 			{
 				skippedCount++;
-				pktOpt = reader.ReadNextPacket();
 				continue;
 			}
-			uint32 pktNumber = reader.GetPacketNumber() - 1;
 
-			BitReader packetReader = pkt.CreateReader();
-			json packetData = router.HandlePacket(pkt.header.opcode, packetReader, pktNumber);
-			json fullPacket = JsonSerializer::SerializeFullPacket(pkt.header, build, pktNumber, packetData);
+			try
+			{
+				BitReader packetReader = pkt.CreateReader();
+				json packetData = router.HandlePacket(pkt.header.opcode, packetReader, pkt.pktNumber);
+				json fullPacket = JsonSerializer::SerializeFullPacket(pkt.header, build, pkt.pktNumber, packetData);
+				db.StorePacket(fullPacket);
+				parsedCount++;
 
-			db.StorePacket(fullPacket);
-			parsedCount++;
-
-			if (parsedCount % 1000 == 0)
-				LOG("Processed {} packets...", parsedCount);
-
-			pktOpt = reader.ReadNextPacket();
+				if (parsedCount % 10000 == 0)
+					LOG("Processed {} packets...", parsedCount);
+			}
+			catch (std::exception const& e)
+			{
+				LOG("Failed to parse packet {} OP {}: {}", pkt.pktNumber, GetOpcodeName(pkt.header.opcode), e.what());
+				failedCount++;
+			}
 		}
 
 		LOG("Parsing complete, flushing...");
@@ -91,15 +91,15 @@ int main(int argc, char* argv[])
 		auto endTime = std::chrono::high_resolution_clock::now();
 		auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
 
-		LOG(">>>>> PARSE COMPLETE - {} packets parsed, {} skipped <<<<<", parsedCount, skippedCount);
-		LOG("Parsed: {}, Skipped: {}", parsedCount, skippedCount);
+		LOG(">>>>> PARSE COMPLETE <<<<<");
+		LOG("Parsed: {}, Skipped: {}, Failed: {}", parsedCount, skippedCount, failedCount);
         LOG("DB Stats: {} inserted, {} failed", db.GetTotalInserted(), db.GetTotalFailed());
 		LOG("Total time: {}ms ({:.2f} seconds)", duration.count(), duration.count() / 1000.0);
 #else
-		auto stats = ParallelProcessor::ProcessAllPackets(reader, router, db, build);
+		Stats stats = ParallelProcessor::ProcessAllPackets(reader, router, db, build);
 
 		LOG(">>>>> PARSE COMPLETE <<<<<");
-        LOG("Parsed: {}, Skipped: {}", stats.ParsedCount, stats.SkippedCount);
+        LOG("Parsed: {}, Skipped: {}, Failed: {}", stats.ParsedCount, stats.SkippedCount, stats.FailedCount);
         LOG("DB Stats: {} inserted, {} failed", db.GetTotalInserted(), db.GetTotalFailed());
         LOG("Total time: {}ms ({:.2f} seconds)", stats.TotalTime, stats.TotalTime / 1000.0);
 #endif

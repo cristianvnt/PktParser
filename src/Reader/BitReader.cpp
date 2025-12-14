@@ -16,7 +16,7 @@ namespace PktParser::Reader
 		ResetBitReader();
 
 		if (_bytePos >= _length)
-			throw EndOfStreamException{};
+			throw ParseException{"Read UInt8"};
 
 		uint8 value = _data[_bytePos];
 		_bytePos++;
@@ -28,7 +28,7 @@ namespace PktParser::Reader
 		ResetBitReader();
 
 		if (_bytePos + sizeof(uint16) > _length)
-			throw EndOfStreamException{};
+			throw ParseException{"Read UInt16"};
 
 		uint16 value;
 		std::memcpy(&value, &_data[_bytePos], sizeof(uint16));
@@ -41,7 +41,7 @@ namespace PktParser::Reader
 		ResetBitReader();
 
 		if (_bytePos + sizeof(uint32) > _length)
-			throw EndOfStreamException{};
+			throw ParseException{"Read UInt32"};
 
 		uint32 value;
 		std::memcpy(&value, &_data[_bytePos], sizeof(uint32));
@@ -54,7 +54,7 @@ namespace PktParser::Reader
 		ResetBitReader();
 
 		if (_bytePos + sizeof(uint64) > _length)
-			throw EndOfStreamException{};
+			throw ParseException{"Read UInt64"};
 
 		uint64 value;
 		std::memcpy(&value, &_data[_bytePos], sizeof(uint64));
@@ -72,7 +72,7 @@ namespace PktParser::Reader
 		ResetBitReader();
 
 		if (_bytePos + sizeof(float) > _length)
-			throw EndOfStreamException{};
+			throw ParseException{"Read Float"};
 
 		float value;
 		std::memcpy(&value, &_data[_bytePos], sizeof(float));
@@ -110,7 +110,7 @@ namespace PktParser::Reader
 		if (_bitPos == 8)
 		{
 			if (_bytePos >= _length)
-				throw EndOfStreamException{};
+				throw ParseException{"Read Bit"};
 
 			_bitPos = 0;
 			_curBitVal = _data[_bytePos];
@@ -135,7 +135,7 @@ namespace PktParser::Reader
 	void BitReader::Skip(size_t bytes)
 	{
 		if (_bytePos + bytes > _length)
-			throw EndOfStreamException{};
+			throw ParseException{"Skip"};
 
 		_bytePos += bytes;
 	}

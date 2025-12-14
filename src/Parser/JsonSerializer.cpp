@@ -82,23 +82,6 @@ namespace PktParser
 		j["RemainingPowerCount"] = data.RemainingPowerCount;
 		j["HasRuneData"] = data.HasRuneData;
 		j["TargetPointsCount"] = data.TargetPointsCount;
-
-		json missArray = json::array();
-		for (size_t i = 0; i < data.MissTargets.size(); ++i)
-		{
-			json t;
-			t["GUID"] = data.MissTargets[i].ToString();
-			t["Type"] = GuidTypeToString(data.MissTargets[i].GetType());
-			t["Low"] = data.MissTargets[i].GetLow();
-			if (i < data.MissStatus.size())
-			{
-				t["MissReason"] = data.MissStatus[i].MissReason;
-				t["ReflectStatus"] = data.MissStatus[i].ReflectStatus;
-			}
-			missArray.push_back(t);
-		}
-		j["MissTargets"] = missArray;
-
 		j["Target"] = SerializeTargetData(data.TargetData);
 
 		json hitArray = json::array();
@@ -116,14 +99,41 @@ namespace PktParser
 		}
 		j["HitTargets"] = hitArray;
 
-		if (!data.RemainingPower.empty())
-			j["RemainingPower"] = data.RemainingPower;
+		json missArray = json::array();
+		for (size_t i = 0; i < data.MissTargets.size(); ++i)
+		{
+			json t;
+			t["GUID"] = data.MissTargets[i].ToString();
+			t["Type"] = GuidTypeToString(data.MissTargets[i].GetType());
+			t["Low"] = data.MissTargets[i].GetLow();
+			if (i < data.MissStatus.size())
+			{
+				t["MissReason"] = data.MissStatus[i].MissReason;
+				t["ReflectStatus"] = data.MissStatus[i].ReflectStatus;
+			}
+			missArray.push_back(t);
+		}
+		j["MissTargets"] = missArray;
 
+		if (!data.RemainingPower.empty())
+		{
+			json powerArray = json::array();
+			for (const auto& power : data.RemainingPower)
+			{
+				json powerObj;
+				powerObj["Cost"] = power.Cost;
+				powerObj["Type"] = power.Type;
+				powerArray.push_back(powerObj);
+			}
+			j["RemainingPower"] = powerArray;
+		}
+    	
 		if (data.HasRuneData)
 		{
 			json runeData;
 			runeData["Start"] = data.Runes.Start;
 			runeData["Count"] = data.Runes.Count;
+			runeData["CooldownCount"] = data.RuneCooldowns.size();
 			runeData["Cooldowns"] = data.RuneCooldowns;
 			j["RuneData"] = runeData;
 		}
@@ -154,38 +164,34 @@ namespace PktParser
 		j["FlagsString"] = Misc::GetTargetFlagName(target.Flags);
 		j["Unit"] = target.Unit.ToString();
 		j["Item"] = target.Item.ToString();
-		j["HasSrcLocation"] = target.HasSrcLocation;
-		j["HasDstLocation"] = target.HasDstLocation;
-		j["HasOrientation"] = target.HasOrientation;
-		j["HasMapID"] = target.HasMapID;
 
-		if (target.HasSrcLocation)
+		if (target.SrcLocation)
 		{
 			j["SrcLocation"] =
 			{
-				{"Transport", target.SrcLocation.Transport.ToString()},
-				{"X", target.SrcLocation.X},
-				{"Y", target.SrcLocation.Y},
-				{"Z", target.SrcLocation.Z}
+				{"Transport", target.SrcLocation->Transport.ToString()},
+				{"X", target.SrcLocation->X},
+				{"Y", target.SrcLocation->Y},
+				{"Z", target.SrcLocation->Z}
 			};
 		}
 
-		if (target.HasDstLocation)
+		if (target.DstLocation)
 		{
 			j["DstLocation"] =
 			{
-				{"Transport", target.DstLocation.Transport.ToString()},
-				{"X", target.DstLocation.X},
-				{"Y", target.DstLocation.Y},
-				{"Z", target.DstLocation.Z}
+				{"Transport", target.DstLocation->Transport.ToString()},
+				{"X", target.DstLocation->X},
+				{"Y", target.DstLocation->Y},
+				{"Z", target.DstLocation->Z}
 			};
 		}
 
-		if (target.HasOrientation)
-			j["Orientation"] = target.Orientation;
+		if (target.Orientation)
+			j["Orientation"] = *target.Orientation;
 
-		if (target.HasMapID)
-			j["MapID"] = target.MapID;
+		if (target.MapID)
+			j["MapID"] = *target.MapID;
 
 		j["Name"] = target.Name;
 

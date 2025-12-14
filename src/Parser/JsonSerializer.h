@@ -8,13 +8,6 @@
 #include "Structures/SpellGoData.h"
 #include "Structures/SpellTargetData.h"
 #include "Structures/Packed/AuthChallengeData.h"
-#include "Structures/Packed/SpellCastVisual.h"
-#include "Structures/Packed/MissileTrajectory.h"
-#include "Structures/Packed/CreatureImmunities.h"
-#include "Structures/Packed/SpellHealPrediction.h"
-#include "Structures/Packed/RuneData.h"
-#include "Structures/Packed/SpellCastFixedData.h"
-#include "Structures/Packed/SpellMissStatus.h"
 #include "Structures/Packed/WorldStateInfo.h"
 
 #include <nlohmann/json.hpp>

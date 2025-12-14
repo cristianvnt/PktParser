@@ -15,16 +15,10 @@ namespace PktParser::Structures
         uint32 Flags;
         WowGuid128 Unit;
         WowGuid128 Item;
-
-        bool HasSrcLocation;
-        bool HasDstLocation;
-        bool HasOrientation;
-        bool HasMapID;
-
-        TargetLocation SrcLocation;
-        TargetLocation DstLocation;
-        float Orientation;
-        uint32 MapID;
+        std::optional<TargetLocation> SrcLocation;
+        std::optional<TargetLocation> DstLocation;
+        std::optional<float> Orientation;
+        std::optional<int32> MapID;
         std::string Name;
     };
 }

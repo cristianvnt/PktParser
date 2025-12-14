@@ -64,8 +64,6 @@ namespace PktParser
 		data.HealPrediction = *healPtr;
 		data.BeaconGUID = ReadPackedGuid128(reader);
 
-		reader.ResetBitReader();
-
 		data.HitTargetsCount = reader.ReadBits(16);
 		data.MissTargetsCount = reader.ReadBits(16);
 		data.HitStatusCount = reader.ReadBits(16);
@@ -74,49 +72,48 @@ namespace PktParser
 		data.HasRuneData = reader.ReadBit();
 		data.TargetPointsCount = reader.ReadBits(16);
 
-		data.MissStatus.reserve(data.MissStatusCount);
-		for (uint32 i = 0; i < data.MissStatusCount; ++i)
-		{
-			SpellMissStatus status;
-			status.MissReason = reader.ReadUInt8();
-			if (status.MissReason == 11) // SPELL_MISS_REFLECT
-				status.ReflectStatus = reader.ReadUInt8();
-			else
-				status.ReflectStatus = 0;
-			data.MissStatus.push_back(status);
-		}
+		reader.ResetBitReader();
 
 		ParseSpellTargetData(reader, basicInfo->SpellID, data.TargetData);
 
-		data.HitTargets.reserve(data.HitTargetsCount);
+		data.HitTargets.resize(data.HitTargetsCount);
 		for (uint32 i = 0; i < data.HitTargetsCount; ++i)
-			data.HitTargets.push_back(ReadPackedGuid128(reader));
+			data.HitTargets[i] = ReadPackedGuid128(reader);
 
-		data.MissTargets.reserve(data.MissTargetsCount);
+		data.MissTargets.resize(data.MissTargetsCount);
 		for (uint32 i = 0; i < data.MissTargetsCount; ++i)
-			data.MissTargets.push_back(ReadPackedGuid128(reader));
+			data.MissTargets[i] = ReadPackedGuid128(reader);
 
-		data.HitStatus.reserve(data.HitStatusCount);
-		if (data.HitStatusCount > 0)
-			reader.ReadChunkArray(data.HitStatus, data.HitStatusCount);
+		reader.ReadChunkArray(data.HitStatus, data.HitStatusCount);
+		data.MissStatus.resize(data.MissStatusCount);
+		for (uint32 i = 0; i < data.MissStatusCount; ++i)
+		{
+			data.MissStatus[i].MissReason = reader.ReadUInt8();
+			if (data.MissStatus[i].MissReason == 11) // SPELL_MISS_REFLECT
+				data.MissStatus[i].ReflectStatus = reader.ReadUInt8();
+			else
+				data.MissStatus[i].ReflectStatus = 0;
+		}
 
-		data.RemainingPower.reserve(data.RemainingPowerCount);
-		if (data.RemainingPowerCount > 0)
-			reader.ReadChunkArray(data.RemainingPower, data.RemainingPowerCount);
+		data.RemainingPower.resize(data.RemainingPowerCount);
+		for (uint32 i = 0; i < data.RemainingPowerCount; ++i)
+		{
+			data.RemainingPower[i].Type = reader.ReadUInt8();
+			data.RemainingPower[i].Cost = reader.ReadInt32();
+		}
 
 		if (data.HasRuneData)
 		{
 			RuneData const* runePtr = reader.ReadChunk<RuneData>();
 			data.Runes = *runePtr;
-
-			data.RuneCooldowns.reserve(data.Runes.Count);
-			if (data.Runes.Count > 0)
-				reader.ReadChunkArray(data.RuneCooldowns, data.Runes.Count);
+			uint32 cooldownCount = reader.ReadUInt32();
+			
+			reader.ReadChunkArray(data.RuneCooldowns, cooldownCount);
 		}
 
-		data.TargetPoints.reserve(data.TargetPointsCount);
+		data.TargetPoints.resize(data.TargetPointsCount);
 		for (uint32 i = 0; i < data.TargetPointsCount; ++i)
-			data.TargetPoints.push_back(ReadLocation(reader));
+			data.TargetPoints[i] = ReadLocation(reader);
 
 		return JsonSerializer::SerializeSpellGo(data);
 	}
@@ -135,29 +132,28 @@ namespace PktParser
 
 	void Parser::ParseSpellTargetData(BitReader& reader, [[maybe_unused]] uint32 spellID, SpellTargetData& targetData)
 	{
-		reader.ResetBitReader();
-
 		targetData.Flags = reader.ReadUInt32();
 		targetData.Unit = ReadPackedGuid128(reader);
 		targetData.Item = ReadPackedGuid128(reader);
 
-		targetData.HasSrcLocation = reader.ReadBit();
-		targetData.HasDstLocation = reader.ReadBit();
-		targetData.HasOrientation = reader.ReadBit();
-		targetData.HasMapID = reader.ReadBit();
-
+		bool hasSrc = reader.ReadBit();
+		bool hasDst = reader.ReadBit();
+		bool hasOrientation = reader.ReadBit();
+		bool hasMapID = reader.ReadBit();
 		uint32 nameLength = reader.ReadBits(7);
 
-		if (targetData.HasSrcLocation)
+		reader.ResetBitReader();
+
+		if (hasSrc)
 			targetData.SrcLocation = ReadLocation(reader);
 
-		if (targetData.HasDstLocation)
+		if (hasDst)
 			targetData.DstLocation = ReadLocation(reader);
 
-		if (targetData.HasOrientation)
+		if (hasOrientation)
 			targetData.Orientation = reader.ReadFloat();
 
-		if (targetData.HasMapID)
+		if (hasMapID)
 			targetData.MapID = reader.ReadUInt32();
 
 		targetData.Name = reader.ReadWoWString(nameLength);

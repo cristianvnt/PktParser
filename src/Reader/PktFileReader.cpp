@@ -38,9 +38,7 @@ namespace PktParser::Reader
 
 		_file.read(reinterpret_cast<char*>(&_fileHeader.clientBuild), sizeof(_fileHeader.clientBuild));
 
-		char locale[5] = { 0 };
-		_file.read(locale, 4);
-		_fileHeader.locale = std::string(locale, 4);
+		_file.read(_fileHeader.locale, 4);
 
 		_file.seekg(40, std::ios::cur); // skip session key
 
@@ -60,8 +58,8 @@ namespace PktParser::Reader
 
 	std::optional<Pkt> PktFileReader::ReadNextPacket()
 	{
-		if (_file.peek() == EOF)
-			return std::nullopt;
+		if (_file.peek() == EOF || !_file.good())
+        	return std::nullopt;
 
 		try
 		{
@@ -71,7 +69,7 @@ namespace PktParser::Reader
 			_file.read(reinterpret_cast<char*>(packetData.data()), header.packetLength);
 
 			if (_file.gcount() != header.packetLength)
-				throw EndOfStreamException{};
+				return std::nullopt;
 
 			if (header.packetLength >= 4)
 				header.opcode = static_cast<uint32>(packetData[0])
@@ -80,12 +78,13 @@ namespace PktParser::Reader
 					| (static_cast<uint32>(packetData[3]) << 24);
 			else
 				header.opcode = 0;
-
+			
+			Pkt pkt{ header, std::move(packetData) };
+			pkt.pktNumber = _pktNumber;
 			_pktNumber++;
-
-			return Pkt{ header, std::move(packetData) };
+			return pkt;
 		}
-		catch (EndOfStreamException const&)
+		catch (...)
 		{
 			return std::nullopt;
 		}

@@ -16,13 +16,14 @@ namespace PktParser
     private:
         static constexpr size_t BATCH_SIZE = 1000;
         
-        static void ProcessBatch(std::vector<Reader::Pkt> const& batch, size_t startIdx, size_t endIdx, 
-            PktRouter& router, Db::Database& db, uint32 build, uint32 basePktNumber, std::atomic<size_t>& parsedCount);
+        static void ProcessBatch(std::vector<Reader::Pkt> const& batch, size_t startIdx, size_t endIdx, PktRouter& router,
+            Db::Database& db, uint32 build, uint32 basePktNumber, std::atomic<size_t>& parsedCount, std::atomic<size_t>& failedCount);
     public:
         struct Stats
         {
             size_t ParsedCount;
             size_t SkippedCount;
+            size_t FailedCount;
             size_t TotalTime;
         };
 

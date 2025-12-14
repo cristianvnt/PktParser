@@ -19,6 +19,7 @@ namespace PktParser
 		json j;
 		j["Direction"] = Misc::DirectionToString(header.direction);
 		j["PacketName"] = GetOpcodeName(header.opcode);
+		j["PacketLength"] = header.packetLength - 4;
 		j["ConnectionIndex"] = header.connectionIndex;
 		j["TickCount"] = header.tickCount;
 		j["Timestamp"] = Misc::FormatUnixMilliseconds(header.timestamp);

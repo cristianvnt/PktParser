@@ -35,7 +35,7 @@ namespace PktParser::Db
 		void CheckOldestInserts(size_t count);
 
 	public:
-		Database(size_t maxPending = 10000, size_t batchFlushSize = 1000);
+		Database(size_t maxPending = 1000, size_t batchFlushSize = 100);
 		~Database();
 
 		void StorePacket(json const& pkt);

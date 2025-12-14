@@ -38,7 +38,7 @@ int main(int argc, char* argv[])
 	
 	try
 	{
-		Db::Database db(50000, 5000);
+		Db::Database db(100000, 10000);
 
 		PktFileReader reader(argv[1]);
 		reader.ParseFileHeader();

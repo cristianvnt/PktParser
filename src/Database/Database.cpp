@@ -8,7 +8,7 @@ using namespace PktParser::Reader;
 namespace PktParser::Db
 {
 
-    Database::Database(size_t maxPending /*= 10000*/, size_t batchFlushSize /*= 1000*/)
+    Database::Database(size_t maxPending /*= 1000*/, size_t batchFlushSize /*= 100*/)
         :_cluster{ nullptr }, _session{ nullptr }, _preparedInsert{ nullptr },
         _maxPending{ maxPending }, _batchFlushSize{ batchFlushSize }
     {
@@ -82,6 +82,7 @@ namespace PktParser::Db
                 "packet_number int PRIMARY KEY,"
                 "direction text,"
                 "packet_name text,"
+                "packet_len int,"
                 "opcode text,"
                 "timestamp text,"
                 "build int,"
@@ -108,8 +109,8 @@ namespace PktParser::Db
     void Database::PrepareStmts()
     {
         char const* insertQuery =
-            "INSERT INTO wow_packets.packets (packet_number, direction, packet_name, opcode, timestamp, build, pkt_json) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?)";
+            "INSERT INTO wow_packets.packets (packet_number, direction, packet_name, packet_len, opcode, timestamp, build, pkt_json) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
 
         CassFuture* prepareFuture = cass_session_prepare(_session, insertQuery);
         cass_future_wait(prepareFuture);
@@ -174,11 +175,12 @@ namespace PktParser::Db
         cass_statement_bind_int32(stmt, 0, pkt["Number"].get<int>());
         cass_statement_bind_string(stmt, 1, pkt["Header"]["Direction"].get<std::string>().c_str());
         cass_statement_bind_string(stmt, 2, pkt["Header"]["PacketName"].get<std::string>().c_str());
-        cass_statement_bind_string(stmt, 3, pkt["Header"]["Opcode"].get<std::string>().c_str());
-        cass_statement_bind_string(stmt, 4, pkt["Header"]["Timestamp"].get<std::string>().c_str());
-        cass_statement_bind_int32(stmt, 5, pkt["Header"]["Build"].get<int>());
+        cass_statement_bind_int32(stmt, 3, pkt["Header"]["PacketLength"].get<int>());
+        cass_statement_bind_string(stmt, 4, pkt["Header"]["Opcode"].get<std::string>().c_str());
+        cass_statement_bind_string(stmt, 5, pkt["Header"]["Timestamp"].get<std::string>().c_str());
+        cass_statement_bind_int32(stmt, 6, pkt["Header"]["Build"].get<int>());
         
-        cass_statement_bind_string(stmt, 6, pkt.dump().c_str());
+        cass_statement_bind_string(stmt, 7, pkt.dump().c_str());
         // std::vector<uint8> bson = json::to_bson(pkt);
         // cass_statement_bind_bytes(stmt, 6, bson.data(), bson.size());
         //LOG("{}", json::from_bson(bson).dump(4));

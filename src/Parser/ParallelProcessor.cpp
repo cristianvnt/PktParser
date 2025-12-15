@@ -28,7 +28,7 @@ namespace PktParser
             try
             {
                 BitReader pktReader = pkt.CreateReader();
-                json pktData = method(pktReader, pktNumber);
+                json pktData = method(pktReader);
                 db.StorePacket(ctx.Serializer->SerializeFullPacket(pkt.header, ctx.Parser->GetOpcodeName(pkt.header.opcode), ctx.Build, pktNumber, pktData));
                 parsedCount.fetch_add(1, std::memory_order_relaxed);
             }

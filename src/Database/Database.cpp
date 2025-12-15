@@ -180,11 +180,7 @@ namespace PktParser::Db
         cass_statement_bind_string(stmt, 4, pkt["Header"]["Opcode"].get<std::string>().c_str());
         cass_statement_bind_string(stmt, 5, pkt["Header"]["Timestamp"].get<std::string>().c_str());
         cass_statement_bind_int32(stmt, 6, pkt["Header"]["Build"].get<int>());
-        
         cass_statement_bind_string(stmt, 7, pkt.dump(4).c_str());
-        // std::vector<uint8> bson = json::to_bson(pkt);
-        // cass_statement_bind_bytes(stmt, 6, bson.data(), bson.size());
-        //LOG("{}", json::from_bson(bson).dump(4));
 
         CassFuture* future = cass_session_execute(_session, stmt);
 

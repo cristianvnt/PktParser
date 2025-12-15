@@ -51,7 +51,7 @@ int main(int argc, char* argv[])
 		VersionContext ctx = VersionFactory::Create(build);
 		LOG("Pkt build {} - Using parser for build {}", build, ctx.Build);
 		
-		Db::Database db(1000, 100);
+		Db::Database db(100000, 10000);
 
 #ifdef SYNC_PARSING_MODE
 		auto startTime = std::chrono::high_resolution_clock::now();
@@ -76,7 +76,7 @@ int main(int argc, char* argv[])
 			try
 			{
 				BitReader packetReader = pkt.CreateReader();
-				json packetData = method(packetReader, pkt.pktNumber);
+				json packetData = method(packetReader);
 				json fullPacket = ctx.Serializer->SerializeFullPacket(pkt.header, ctx.Parser->GetOpcodeName(pkt.header.opcode),
 					build, pkt.pktNumber, packetData);
 				db.StorePacket(fullPacket);

@@ -8,7 +8,7 @@
 namespace PktParser::Versions
 {
     using json = nlohmann::ordered_json;
-    using ParserMethod = json(*)(Reader::BitReader&, uint32);
+    using ParserMethod = json(*)(Reader::BitReader&);
 
     class IVersionParser
     {

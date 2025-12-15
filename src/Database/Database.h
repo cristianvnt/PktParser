@@ -2,8 +2,8 @@
 #define DATABASE_H
 
 #include "Reader/PktFileReader.h"
-#include "Parser/JsonSerializer.h"
 
+#include <nlohmann/json.hpp>
 #include <cassandra.h>
 #include <vector>
 #include <string>
@@ -13,6 +13,8 @@
 
 namespace PktParser::Db
 {
+	using json = nlohmann::ordered_json;
+	
 	class Database
 	{
 	private:

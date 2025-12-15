@@ -1,45 +1,46 @@
 #include "ParallelProcessor.h"
 #include "Misc/Logger.h"
-#include "Parser/JsonSerializer.h"
 #include "Reader/BitReader.h"
-#include "Opcodes.h"
+#include "V11_2_5_64502/JsonSerializer.h"
+#include "V11_2_7_64632/JsonSerializer.h"
 
 #include <chrono>
 #include <algorithm>
-#include <nlohmann/json.hpp>
 
 using namespace PktParser::Reader;
 using namespace PktParser::Db;
+using namespace PktParser::Versions;
 
 namespace PktParser
 {
-    void ParallelProcessor::ProcessBatch(std::vector<Pkt> const& batch, size_t startIdx, size_t endIdx, PktRouter& router,
-        Db::Database& db, uint32 build, uint32 basePktNumber, std::atomic<size_t>& parsedCount, std::atomic<size_t>& failedCount)
+    void ParallelProcessor::ProcessBatch(std::vector<Pkt> const& batch, size_t startIdx, size_t endIdx,
+        VersionContext& ctx, Db::Database& db, std::atomic<size_t>& parsedCount, std::atomic<size_t>& failedCount)
     {
         for (size_t i = startIdx; i < endIdx; ++i)
         {
             Pkt const& pkt = batch[i];
             uint32 pktNumber = pkt.pktNumber;
+
+            ParserMethod method = ctx.Parser->GetParserMethod(pkt.header.opcode);
+            if (!method)
+                continue;
+            
             try
             {
                 BitReader pktReader = pkt.CreateReader();
-                json pktData = router.HandlePacket(pkt.header.opcode, pktReader, pktNumber);
-
-                db.StorePacket(JsonSerializer::SerializeFullPacket(pkt.header, build, pktNumber, pktData));
+                json pktData = method(pktReader, pktNumber);
+                db.StorePacket(ctx.Serializer->SerializeFullPacket(pkt.header, ctx.Parser->GetOpcodeName(pkt.header.opcode), ctx.Build, pktNumber, pktData));
                 parsedCount.fetch_add(1, std::memory_order_relaxed);
             }
             catch (std::exception const& e)
             {
-                LOG("Failed to parse packet {} OP {}: {}", pktNumber, GetOpcodeName(pkt.header.opcode), e.what());
-                LOG("BASE PKT NUMBER: {}", basePktNumber);
-                LOG("PKT NUMBER: {}", pktNumber);
+                LOG("Failed to parse packet {} OP {}: {}", pktNumber, ctx.Parser->GetOpcodeName(pkt.header.opcode), e.what());
                 failedCount.fetch_add(1, std::memory_order_relaxed);
             }
         }
     }
 
-    ParallelProcessor::Stats ParallelProcessor::ProcessAllPackets(PktFileReader& reader, PktRouter& router,
-        Database& db, uint32 build, size_t threadCount /*= 0*/)
+    ParallelProcessor::Stats ParallelProcessor::ProcessAllPackets(PktFileReader& reader, VersionContext& ctx, Database& db, size_t threadCount /*= 0*/)
     {
         auto startTime = std::chrono::high_resolution_clock::now();
 
@@ -65,13 +66,14 @@ namespace PktParser
                 break;
 
 			Pkt const& pkt = pktOpt.value();
-
-			if (!router.HasHandler(pkt.header.opcode))
-			{
-				skippedCount.fetch_add(1, std::memory_order_relaxed);
-				continue;
-			}
+            ParserMethod method = ctx.Parser->GetParserMethod(pkt.header.opcode);
+            if (!method)
+            {
+                skippedCount.fetch_add(1, std::memory_order_relaxed);
+                continue;
+            }
 			
+
             batch.push_back(pkt);
 
             if (batch.size() >= BATCH_SIZE)
@@ -82,14 +84,13 @@ namespace PktParser
                 workers.reserve(threadCount);
 
                 size_t pktsPerThread = batch.size() / threadCount;
-                uint32 basePacketNumber = reader.GetPacketNumber();
 
                 for (size_t t = 0; t < threadCount; ++t)
                 {
                     size_t startIdx = t * pktsPerThread;
                     size_t endIdx = (t == threadCount - 1) ? batch.size() : startIdx + pktsPerThread;
-                    workers.emplace_back(ProcessBatch, std::cref(batch), startIdx, endIdx,
-                        std::ref(router), std::ref(db), build, basePacketNumber, std::ref(parsedCount), std::ref(failedCount));
+                    workers.emplace_back(ProcessBatch, std::cref(batch), startIdx, endIdx, std::ref(ctx),
+                        std::ref(db), std::ref(parsedCount), std::ref(failedCount));
                 }
 
                 for (auto& worker : workers)
@@ -108,7 +109,6 @@ namespace PktParser
             workers.reserve(threadCount);
 
             size_t pktsPerThread = batch.size() / threadCount;
-            uint32 basePacketNumber = reader.GetPacketNumber();
 
             for (size_t t = 0; t < threadCount; ++t)
             {
@@ -118,8 +118,8 @@ namespace PktParser
                 if (startIdx >= batch.size())
                     break;
 
-                workers.emplace_back(ProcessBatch, std::cref(batch), startIdx, endIdx,
-                    std::ref(router), std::ref(db), build, basePacketNumber, std::ref(parsedCount), std::ref(failedCount));
+                workers.emplace_back(ProcessBatch, std::cref(batch), startIdx, endIdx, std::ref(ctx),
+                    std::ref(db), std::ref(parsedCount), std::ref(failedCount));
             }
 
             for (auto& worker : workers)

@@ -6,43 +6,24 @@
 #include "Structures/Packed/AuthChallengeData.h"
 #include "Structures/Packed/WorldStateInfo.h"
 #include "Opcodes.h"
+#include "V11_2_5_64502/JsonSerializer.h"
 
+using namespace PktParser::Versions::Common;
 using namespace PktParser::Reader;
 using namespace PktParser::Misc;
 using namespace PktParser::Structures;
 using namespace PktParser::Structures::Packed;
 
-namespace PktParser
+namespace PktParser::Versions::V11_2_7_64632
 {
-	json JsonSerializer::SerializePacketHead(PktHeader const& header, uint32 build)
+	json JsonSerializer::SerializeTargetData(SpellTargetData const& target)
 	{
-		json j;
-		j["Direction"] = Misc::DirectionToString(header.direction);
-		j["PacketName"] = GetOpcodeName(header.opcode);
-		j["PacketLength"] = header.packetLength - 4;
-		j["ConnectionIndex"] = header.connectionIndex;
-		j["TickCount"] = header.tickCount;
-		j["Timestamp"] = Misc::FormatUnixMilliseconds(header.timestamp);
-		j["Opcode"] = fmt::format("0x{:06X}", header.opcode);
-		j["Length"] = header.packetLength;
-		j["Build"] = build;
+		json j = V11_2_5_64502::JsonSerializer::SerializeTargetData(target);
 
-		return j;
-	}
-
-	json JsonSerializer::SerializeAuthChallenge(AuthChallengeData const* data)
-	{
-		json j;
-		j["DosChallenge"] = json::array();
-		for (int i = 0; i < 8; i++)
-			j["DosChallenge"].push_back(data->DosChallenge[i]);
-
-		std::string challengeHex;
-		challengeHex.reserve(64);
-		for (int i = 0; i < 32; i++)
-			fmt::format_to(std::back_inserter(challengeHex), "{:02X}", data->Challenge[i]);
-		j["Challenge"] = challengeHex;
-		j["DosZeroBits"] = data->DosZeroBits;
+		if (target.Unknown1127_1)
+			j["Unknown1127_1"] = target.Unknown1127_1->ToString();
+		if (target.Unknown1127_2)
+			j["Unknown1127_2"] = *target.Unknown1127_2;
 
 		return j;
 	}
@@ -156,67 +137,4 @@ namespace PktParser
 
 		return j;
 	}
-
-	json JsonSerializer::SerializeTargetData(SpellTargetData const& target)
-	{
-		json j;
-
-		j["Flags"] = target.Flags;
-		j["FlagsString"] = Misc::GetTargetFlagName(target.Flags);
-		j["Unit"] = target.Unit.ToString();
-		j["Item"] = target.Item.ToString();
-
-		if (target.SrcLocation)
-		{
-			j["SrcLocation"] =
-			{
-				{"Transport", target.SrcLocation->Transport.ToString()},
-				{"X", target.SrcLocation->X},
-				{"Y", target.SrcLocation->Y},
-				{"Z", target.SrcLocation->Z}
-			};
-		}
-
-		if (target.DstLocation)
-		{
-			j["DstLocation"] =
-			{
-				{"Transport", target.DstLocation->Transport.ToString()},
-				{"X", target.DstLocation->X},
-				{"Y", target.DstLocation->Y},
-				{"Z", target.DstLocation->Z}
-			};
-		}
-
-		if (target.Orientation)
-			j["Orientation"] = *target.Orientation;
-
-		if (target.MapID)
-			j["MapID"] = *target.MapID;
-
-		j["Name"] = target.Name;
-
-		return j;
-	}
-
-	json JsonSerializer::SerializeUpdateWorldState(Packed::WorldStateInfo const* info, bool hidden)
-	{
-		json j;
-		j["WorldStateId"] = info->VariableID;
-		j["Value"] = info->Value;
-		j["Hidden"] = hidden;
-
-		return j;
-	}
-
-	json JsonSerializer::SerializeFullPacket(PktHeader const& header, uint32 build, uint32 pktNumber, json const& packetData)
-	{
-		json j;
-		j["Number"] = pktNumber;
-		j["Header"] = SerializePacketHead(header, build);
-		j["Data"] = packetData;
-
-		return j;
-	}
-
 }

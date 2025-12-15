@@ -9,15 +9,15 @@
 #include "Misc/Logger.h"
 #include "Reader/BitReader.h"
 #include "Reader/PktFileReader.h"
-#include "Parser/Parser.h"
-#include "Parser/PktHandler.h"
-#include "Parser/JsonSerializer.h"
 #include "Database/Database.h"
 #include "Parser/ParallelProcessor.h"
+#include "VersionFactory.h"
 
 using namespace PktParser;
 using namespace PktParser::Reader;
 using namespace PktParser::Misc;
+using namespace PktParser::Versions;
+
 using Stats = PktParser::ParallelProcessor::Stats;
 
 int main(int argc, char* argv[])
@@ -38,15 +38,20 @@ int main(int argc, char* argv[])
 	
 	try
 	{
-		Db::Database db(100000, 10000);
-
 		PktFileReader reader(argv[1]);
 		reader.ParseFileHeader();
-		
-		PktRouter router;
-		Parser::RegisterHandlers(router);
-
 		uint32 build = reader.GetFileHeader().clientBuild;
+		
+		if (!VersionFactory::IsSupported(build))
+		{
+			LOG("ERROR: Build {} is not supported!", build);
+            return 1;
+		}
+		
+		VersionContext ctx = VersionFactory::Create(build);
+		LOG("Pkt build {} - Using parser for build {}", build, ctx.Build);
+		
+		Db::Database db(1000, 100);
 
 #ifdef SYNC_PARSING_MODE
 		auto startTime = std::chrono::high_resolution_clock::now();
@@ -61,7 +66,8 @@ int main(int argc, char* argv[])
 				break;
 
 			Pkt const& pkt = pktOpt.value();
-			if (!router.HasHandler(pkt.header.opcode))
+			ParserMethod method = ctx.Parser->GetParserMethod(pkt.header.opcode);
+            if (!method)
 			{
 				skippedCount++;
 				continue;
@@ -70,8 +76,9 @@ int main(int argc, char* argv[])
 			try
 			{
 				BitReader packetReader = pkt.CreateReader();
-				json packetData = router.HandlePacket(pkt.header.opcode, packetReader, pkt.pktNumber);
-				json fullPacket = JsonSerializer::SerializeFullPacket(pkt.header, build, pkt.pktNumber, packetData);
+				json packetData = method(packetReader, pkt.pktNumber);
+				json fullPacket = ctx.Serializer->SerializeFullPacket(pkt.header, ctx.Parser->GetOpcodeName(pkt.header.opcode),
+					build, pkt.pktNumber, packetData);
 				db.StorePacket(fullPacket);
 				parsedCount++;
 
@@ -80,7 +87,7 @@ int main(int argc, char* argv[])
 			}
 			catch (std::exception const& e)
 			{
-				LOG("Failed to parse packet {} OP {}: {}", pkt.pktNumber, GetOpcodeName(pkt.header.opcode), e.what());
+				LOG("Failed to parse packet {} OP {}: {}", pkt.pktNumber, ctx.Parser->GetOpcodeName(pkt.header.opcode), e.what());
 				failedCount++;
 			}
 		}
@@ -96,7 +103,7 @@ int main(int argc, char* argv[])
         LOG("DB Stats: {} inserted, {} failed", db.GetTotalInserted(), db.GetTotalFailed());
 		LOG("Total time: {}ms ({:.2f} seconds)", duration.count(), duration.count() / 1000.0);
 #else
-		Stats stats = ParallelProcessor::ProcessAllPackets(reader, router, db, build);
+		Stats stats = ParallelProcessor::ProcessAllPackets(reader, ctx, db);
 
 		LOG(">>>>> PARSE COMPLETE <<<<<");
         LOG("Parsed: {}, Skipped: {}, Failed: {}", stats.ParsedCount, stats.SkippedCount, stats.FailedCount);
@@ -104,6 +111,7 @@ int main(int argc, char* argv[])
         LOG("Total time: {}ms ({:.2f} seconds)", stats.TotalTime, stats.TotalTime / 1000.0);
 #endif
 
+		VersionFactory::Destroy(ctx);
 	}
 	catch (std::exception const& e)
 	{

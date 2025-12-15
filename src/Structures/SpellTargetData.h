@@ -15,6 +15,8 @@ namespace PktParser::Structures
         uint32 Flags;
         WowGuid128 Unit;
         WowGuid128 Item;
+        std::optional<WowGuid128> Unknown1127_1;
+        std::optional<bool> Unknown1127_2;
         std::optional<TargetLocation> SrcLocation;
         std::optional<TargetLocation> DstLocation;
         std::optional<float> Orientation;

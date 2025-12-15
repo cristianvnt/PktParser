@@ -1,16 +1,7 @@
 #include "Parser.h"
-#include "Misc/Logger.h"
-#include "Misc/WowGuid.h"
-#include "Misc/Utilities.h"
-#include "PktHandler.h"
+#include "Opcodes.h"
+#include "Structures/Packed/AuthChallengeData.h"
 #include "JsonSerializer.h"
-#include "Enums/TargetFlags.h"
-#include "Enums/CastFlags.h"
-#include "Enums/SpellMissType.h"
-
-#include <vector>
-#include <fmt/core.h>
-#include <chrono>
 
 using namespace PktParser::Reader;
 using namespace PktParser::Misc;
@@ -18,13 +9,30 @@ using namespace PktParser::Enums;
 using namespace PktParser::Structures;
 using namespace PktParser::Structures::Packed;
 
-namespace PktParser
+namespace PktParser::Versions::V11_2_7_64632
 {
-	void Parser::RegisterHandlers(PktRouter& router)
+	ParserMethod Parser::GetParserMethod(uint32 opcode) const
 	{
-		router.RegisterHandler(Opcode::SMSG_AUTH_CHALLENGE, ParseAuthChallenge);
-		router.RegisterHandler(Opcode::SMSG_SPELL_GO, ParseSpellGo);
-		router.RegisterHandler(Opcode::SMSG_UPDATE_WORLD_STATE, ParseUpdateWorldState);
+		switch(opcode)
+		{
+		case Opcodes::SMSG_AUTH_CHALLENGE:
+			return &ParseAuthChallenge;	
+		case Opcodes::SMSG_SPELL_GO:
+			return &ParseSpellGo;
+		case Opcodes::SMSG_UPDATE_WORLD_STATE:
+			return &ParseUpdateWorldState;
+		case Opcodes::CMSG_AUTH_SESSION:
+		case Opcodes::SMSG_SPELL_START:
+			return nullptr;
+		default:
+			return nullptr;
+		}
+	}
+
+	char const* Parser::GetOpcodeName(uint32 opcode) const
+	{
+		auto it = OpcodeNames.find(opcode);
+		return it != OpcodeNames.end() ? it->second : "UNKNOWN_OPCODE";
 	}
 
 	json Parser::ParseAuthChallenge(BitReader& reader, [[maybe_unused]] uint32 pktNumber)
@@ -34,16 +42,6 @@ namespace PktParser
 		AuthChallengeData const* authData = reader.ReadChunk<AuthChallengeData>();
 
 		return JsonSerializer::SerializeAuthChallenge(authData);
-	}
-
-	TargetLocation ReadLocation(BitReader& reader)
-	{
-		TargetLocation loc;
-		loc.Transport = ReadPackedGuid128(reader);
-		loc.X = reader.ReadFloat();
-		loc.Y = reader.ReadFloat();
-		loc.Z = reader.ReadFloat();
-		return loc;
 	}
 
 	json Parser::ParseSpellGo(BitReader& reader, [[maybe_unused]] uint32 pktNumber)
@@ -135,6 +133,8 @@ namespace PktParser
 		targetData.Flags = reader.ReadUInt32();
 		targetData.Unit = ReadPackedGuid128(reader);
 		targetData.Item = ReadPackedGuid128(reader);
+		targetData.Unknown1127_1 = ReadPackedGuid128(reader);
+		targetData.Unknown1127_2 = reader.ReadBit();
 
 		bool hasSrc = reader.ReadBit();
 		bool hasDst = reader.ReadBit();
@@ -157,5 +157,15 @@ namespace PktParser
 			targetData.MapID = reader.ReadUInt32();
 
 		targetData.Name = reader.ReadWoWString(nameLength);
+	}
+
+	TargetLocation Parser::ReadLocation(BitReader& reader)
+	{
+		TargetLocation loc;
+		loc.Transport = ReadPackedGuid128(reader);
+		loc.X = reader.ReadFloat();
+		loc.Y = reader.ReadFloat();
+		loc.Z = reader.ReadFloat();
+		return loc;
 	}
 }

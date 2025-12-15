@@ -2,6 +2,7 @@
 
 #include "Misc/Define.h"
 #include "Misc/Exceptions.h"
+#include "Misc/Logger.h"
 
 using namespace PktParser::Reader;
 
@@ -175,12 +176,12 @@ namespace PktParser::Db
         cass_statement_bind_int32(stmt, 0, pkt["Number"].get<int>());
         cass_statement_bind_string(stmt, 1, pkt["Header"]["Direction"].get<std::string>().c_str());
         cass_statement_bind_string(stmt, 2, pkt["Header"]["PacketName"].get<std::string>().c_str());
-        cass_statement_bind_int32(stmt, 3, pkt["Header"]["PacketLength"].get<int>());
+        cass_statement_bind_int32(stmt, 3, pkt["Header"]["Length"].get<int>());
         cass_statement_bind_string(stmt, 4, pkt["Header"]["Opcode"].get<std::string>().c_str());
         cass_statement_bind_string(stmt, 5, pkt["Header"]["Timestamp"].get<std::string>().c_str());
         cass_statement_bind_int32(stmt, 6, pkt["Header"]["Build"].get<int>());
         
-        cass_statement_bind_string(stmt, 7, pkt.dump().c_str());
+        cass_statement_bind_string(stmt, 7, pkt.dump(4).c_str());
         // std::vector<uint8> bson = json::to_bson(pkt);
         // cass_statement_bind_bytes(stmt, 6, bson.data(), bson.size());
         //LOG("{}", json::from_bson(bson).dump(4));

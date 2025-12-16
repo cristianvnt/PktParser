@@ -25,16 +25,18 @@ namespace PktParser
             if (!method)
                 continue;
             
+            char const* opcodeName = ctx.Parser->GetOpcodeName(pkt.header.opcode);
             try
             {
                 BitReader pktReader = pkt.CreateReader();
                 json pktData = method(pktReader);
-                db.StorePacket(ctx.Serializer->SerializeFullPacket(pkt.header, ctx.Parser->GetOpcodeName(pkt.header.opcode), ctx.Build, pktNumber, pktData));
+                json fullPkt = ctx.Serializer->SerializeFullPacket(pkt.header, opcodeName, ctx.Build, pktNumber, pktData);
+                db.StorePacket(std::move(fullPkt));
                 parsedCount.fetch_add(1, std::memory_order_relaxed);
             }
             catch (std::exception const& e)
             {
-                LOG("Failed to parse packet {} OP {}: {}", pktNumber, ctx.Parser->GetOpcodeName(pkt.header.opcode), e.what());
+                LOG("Failed to parse packet {} OP {}: {}", pktNumber, opcodeName, e.what());
                 failedCount.fetch_add(1, std::memory_order_relaxed);
             }
         }
@@ -66,13 +68,11 @@ namespace PktParser
                 break;
 
 			Pkt const& pkt = pktOpt.value();
-            ParserMethod method = ctx.Parser->GetParserMethod(pkt.header.opcode);
-            if (!method)
+            if (!ctx.Parser->GetParserMethod(pkt.header.opcode))
             {
                 skippedCount.fetch_add(1, std::memory_order_relaxed);
                 continue;
             }
-			
 
             batch.push_back(pkt);
 
@@ -82,15 +82,23 @@ namespace PktParser
 
                 std::vector<std::thread> workers;
                 workers.reserve(threadCount);
+                
+                size_t batchSize = batch.size();
+                size_t baseChunkSize = batchSize / threadCount;
+                size_t remainder = batchSize % threadCount;
 
-                size_t pktsPerThread = batch.size() / threadCount;
-
+                size_t startIdx = 0;
                 for (size_t t = 0; t < threadCount; ++t)
                 {
-                    size_t startIdx = t * pktsPerThread;
-                    size_t endIdx = (t == threadCount - 1) ? batch.size() : startIdx + pktsPerThread;
-                    workers.emplace_back(ProcessBatch, std::cref(batch), startIdx, endIdx, std::ref(ctx),
-                        std::ref(db), std::ref(parsedCount), std::ref(failedCount));
+                    size_t chunkSize = baseChunkSize + (t < remainder ? 1 : 0);
+                    size_t endIdx = startIdx + chunkSize;
+
+                    if (chunkSize > 0)
+                    {
+                        workers.emplace_back(ProcessBatch, std::cref(batch), startIdx, endIdx, std::ref(ctx),
+                            std::ref(db), std::ref(parsedCount), std::ref(failedCount));
+                        startIdx = endIdx;
+                    }
                 }
 
                 for (auto& worker : workers)
@@ -108,18 +116,22 @@ namespace PktParser
             std::vector<std::thread> workers;
             workers.reserve(threadCount);
 
-            size_t pktsPerThread = batch.size() / threadCount;
+            size_t batchSize = batch.size();
+            size_t baseChunkSize = batchSize / threadCount;
+            size_t remainder = batchSize % threadCount;
 
+            size_t startIdx = 0;
             for (size_t t = 0; t < threadCount; ++t)
             {
-                size_t startIdx = t * pktsPerThread;
-                size_t endIdx = (t == threadCount - 1) ? batch.size() : startIdx + pktsPerThread;
+                size_t chunkSize = baseChunkSize + (t < remainder ? 1 : 0);
+                size_t endIdx = startIdx + chunkSize;
 
-                if (startIdx >= batch.size())
-                    break;
-
-                workers.emplace_back(ProcessBatch, std::cref(batch), startIdx, endIdx, std::ref(ctx),
-                    std::ref(db), std::ref(parsedCount), std::ref(failedCount));
+                if (chunkSize > 0)
+                {
+                    workers.emplace_back(ProcessBatch, std::cref(batch), startIdx, endIdx, std::ref(ctx),
+                        std::ref(db), std::ref(parsedCount), std::ref(failedCount));
+                    startIdx = endIdx;
+                }
             }
 
             for (auto& worker : workers)

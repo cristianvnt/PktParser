@@ -16,18 +16,6 @@ using namespace PktParser::Structures::Packed;
 
 namespace PktParser::Versions::V11_2_7_64632
 {
-	json JsonSerializer::SerializeTargetData(SpellTargetData const& target)
-	{
-		json j = V11_2_5_64502::JsonSerializer::SerializeTargetData(target);
-
-		if (target.Unknown1127_1)
-			j["Unknown1127_1"] = target.Unknown1127_1->ToString();
-		if (target.Unknown1127_2)
-			j["Unknown1127_2"] = *target.Unknown1127_2;
-
-		return j;
-	}
-
 	json JsonSerializer::SerializeSpellGo(SpellGoData const& data)
 	{
 		json j;
@@ -64,38 +52,31 @@ namespace PktParser::Versions::V11_2_7_64632
 		j["RemainingPowerCount"] = data.RemainingPowerCount;
 		j["HasRuneData"] = data.HasRuneData;
 		j["TargetPointsCount"] = data.TargetPointsCount;
+
 		j["Target"] = SerializeTargetData(data.TargetData);
 
 		json hitArray = json::array();
 		for (size_t i = 0; i < data.HitTargets.size(); ++i)
 		{
-			json t;
-			t["GUID"] = data.HitTargets[i].ToString();
-			t["Type"] = GuidTypeToString(data.HitTargets[i].GetType());
-			t["Low"] = data.HitTargets[i].GetLow();
-			if (data.HitTargets[i].HasEntry())
-				t["Entry"] = data.HitTargets[i].GetEntry();
+			json t = SerializeGuidTarget(data.HitTargets[i]);
 			if (i < data.HitStatus.size())
 				t["HitStatus"] = data.HitStatus[i];
-			hitArray.push_back(t);
+			hitArray.push_back(std::move(t));
 		}
-		j["HitTargets"] = hitArray;
+		j["HitTargets"] = std::move(hitArray);
 
 		json missArray = json::array();
 		for (size_t i = 0; i < data.MissTargets.size(); ++i)
 		{
-			json t;
-			t["GUID"] = data.MissTargets[i].ToString();
-			t["Type"] = GuidTypeToString(data.MissTargets[i].GetType());
-			t["Low"] = data.MissTargets[i].GetLow();
+			json t = SerializeGuidTarget(data.MissTargets[i]);
 			if (i < data.MissStatus.size())
 			{
 				t["MissReason"] = data.MissStatus[i].MissReason;
 				t["ReflectStatus"] = data.MissStatus[i].ReflectStatus;
 			}
-			missArray.push_back(t);
+			missArray.push_back(std::move(t));
 		}
-		j["MissTargets"] = missArray;
+		j["MissTargets"] = std::move(missArray);
 
 		if (!data.RemainingPower.empty())
 		{
@@ -105,9 +86,9 @@ namespace PktParser::Versions::V11_2_7_64632
 				json powerObj;
 				powerObj["Cost"] = power.Cost;
 				powerObj["Type"] = power.Type;
-				powerArray.push_back(powerObj);
+				powerArray.push_back(std::move(powerObj));
 			}
-			j["RemainingPower"] = powerArray;
+			j["RemainingPower"] = std::move(powerArray);
 		}
     	
 		if (data.HasRuneData)
@@ -117,23 +98,29 @@ namespace PktParser::Versions::V11_2_7_64632
 			runeData["Count"] = data.Runes.Count;
 			runeData["CooldownCount"] = data.RuneCooldowns.size();
 			runeData["Cooldowns"] = data.RuneCooldowns;
-			j["RuneData"] = runeData;
+			j["RuneData"] = std::move(runeData);
 		}
 
 		if (!data.TargetPoints.empty())
 		{
 			json pointsArray = json::array();
+			pointsArray.get_ref<json::array_t&>().reserve(data.TargetPoints.size());
 			for (auto const& point : data.TargetPoints)
-			{
-				json p;
-				p["Transport"] = point.Transport.ToString();
-				p["X"] = point.X;
-				p["Y"] = point.Y;
-				p["Z"] = point.Z;
-				pointsArray.push_back(p);
-			}
-			j["TargetPoints"] = pointsArray;
+				pointsArray.push_back(SerializeTargetLocation(point));
+			j["TargetPoints"] = std::move(pointsArray);
 		}
+
+		return j;
+	}
+
+	json JsonSerializer::SerializeTargetData(SpellTargetData const& target)
+	{
+		json j = V11_2_5_64502::JsonSerializer::SerializeTargetData(target);
+
+		if (target.Unknown1127_1)
+			j["Unknown1127_1"] = target.Unknown1127_1->ToString();
+		if (target.Unknown1127_2)
+			j["Unknown1127_2"] = *target.Unknown1127_2;
 
 		return j;
 	}

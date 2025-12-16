@@ -18,8 +18,8 @@ namespace PktParser::Versions::V11_2_7_64632
 	class JsonSerializer : public Common::BaseJsonSerializer
 	{
 	public:
-		static json SerializeTargetData(Structures::SpellTargetData const& target);
 		static json SerializeSpellGo(Structures::SpellGoData const& data);
+		static json SerializeTargetData(Structures::SpellTargetData const& target);
 	};
 }
 

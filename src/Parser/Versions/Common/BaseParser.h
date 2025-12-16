@@ -100,6 +100,7 @@ namespace PktParser::Versions::Common
         static json ParseUpdateWorldState(BitReader& reader)
         {
             reader.ReadUInt32(); // skip opcode
+            
             auto const* worldStateInfo = reader.ReadChunk<Structures::Packed::WorldStateInfo>();
             reader.ResetBitReader();
             bool hidden = reader.ReadBit();

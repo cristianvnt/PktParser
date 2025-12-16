@@ -10,12 +10,16 @@ namespace PktParser::Versions::Common
     class BaseJsonSerializer : public IJsonSerializer
     {
     public:
-        json SerializePacketHead(Reader::PktHeader const& header, char const* opcodeName, uint32 build) const override;
         json SerializeFullPacket(Reader::PktHeader const& header, char const* opcodeName,
             uint32 build, uint32 pktNumber, json const& packetData) const override;
+        json SerializePacketHead(Reader::PktHeader const& header, char const* opcodeName, uint32 build) const override;
 
         static json SerializeAuthChallenge(Structures::Packed::AuthChallengeData const* data);
         static json SerializeUpdateWorldState(Structures::Packed::WorldStateInfo const* info, bool hidden);
+
+        // helpers
+        static json SerializeGuidTarget(Misc::WowGuid128 const& guid);
+        static json SerializeTargetLocation(Structures::TargetLocation const& loc);
     };
 }
 #endif

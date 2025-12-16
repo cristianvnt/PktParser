@@ -22,7 +22,7 @@ namespace PktParser::Versions::Common
             reader.ResetBitReader();
             Structures::Packed::AuthChallengeData const* authData = reader.ReadChunk<Structures::Packed::AuthChallengeData>();
 
-            return Derived::SerializeAuthChallenge(authData);
+            return Derived::GetSerializer()->SerializeAuthChallenge(authData);
         }
 
         static json ParseSpellGo(BitReader& reader)
@@ -94,7 +94,7 @@ namespace PktParser::Versions::Common
             for (uint32 i = 0; i < data.TargetPointsCount; ++i)
                 data.TargetPoints[i] = ReadLocation(reader);
 
-            return Derived::SerializeSpellGo(data);
+            return Derived::GetSerializer()->SerializeSpellGo(data);
         }
 
         static json ParseUpdateWorldState(BitReader& reader)
@@ -105,7 +105,7 @@ namespace PktParser::Versions::Common
             reader.ResetBitReader();
             bool hidden = reader.ReadBit();
 
-            return Derived::SerializeUpdateWorldState(worldStateInfo, hidden);
+            return Derived::GetSerializer()->SerializeUpdateWorldState(worldStateInfo, hidden);
         }
         
         static Structures::TargetLocation ReadLocation(BitReader& reader)

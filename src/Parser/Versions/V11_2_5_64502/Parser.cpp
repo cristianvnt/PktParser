@@ -3,6 +3,41 @@
 
 namespace PktParser::Versions::V11_2_5_64502
 {
+	void Parser::ParseSpellTargetData(BitReader& reader, Structures::SpellTargetData& targetData)
+	{
+		targetData.Flags = reader.ReadUInt32();
+		targetData.Unit = Misc::ReadPackedGuid128(reader);
+		targetData.Item = Misc::ReadPackedGuid128(reader);
+
+		bool hasSrc = reader.ReadBit();
+		bool hasDst = reader.ReadBit();
+		bool hasOrientation = reader.ReadBit();
+		bool hasMapID = reader.ReadBit();
+		uint32 nameLength = reader.ReadBits(7);
+
+		reader.ResetBitReader();
+
+		if (hasSrc)
+			targetData.SrcLocation = ReadLocation(reader);
+
+		if (hasDst)
+			targetData.DstLocation = ReadLocation(reader);
+
+		if (hasOrientation)
+			targetData.Orientation = reader.ReadFloat();
+
+		if (hasMapID)
+			targetData.MapID = reader.ReadUInt32();
+
+		targetData.Name = reader.ReadWoWString(nameLength);
+	}
+		
+	JsonSerializer* Parser::GetSerializer()
+	{
+		static JsonSerializer serializer;
+		return &serializer;
+	}
+
 	ParserMethod Parser::GetParserMethod(uint32 opcode) const
 	{
 		switch(opcode)

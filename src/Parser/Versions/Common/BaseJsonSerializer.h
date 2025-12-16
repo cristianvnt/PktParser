@@ -1,26 +1,37 @@
 #ifndef BASE_JSON_SERIALIZER_H
 #define BASE_JSON_SERIALIZER_H
 
-#include "IJsonSerializer.h"
+#include "Structures/SpellGoData.h"
+#include "Structures/SpellTargetData.h"
+#include "Structures/TargetLocation.h"
+#include "Structures/Packed/AuthChallengeData.h"
+#include "Structures/Packed/WorldStateInfo.h"
 #include "Misc/Utilities.h"
 #include <fmt/core.h>
+#include <nlohmann/json.hpp>
 
 namespace PktParser::Versions::Common
 {
-    class BaseJsonSerializer : public IJsonSerializer
+    using json = nlohmann::ordered_json;
+
+    class BaseJsonSerializer
     {
     public:
+        virtual ~BaseJsonSerializer() = default;
+        
         json SerializeFullPacket(Reader::PktHeader const& header, char const* opcodeName,
-            uint32 build, uint32 pktNumber, json const& packetData) const override;
-        json SerializePacketHead(Reader::PktHeader const& header, char const* opcodeName, uint32 build) const override;
+            uint32 build, uint32 pktNumber, json const& packetData) const;
+        json SerializePacketHead(Reader::PktHeader const& header, char const* opcodeName, uint32 build) const;
 
         // commons
-        //virtual json SerializeSpellGo(Structures::SpellGoData const& data) const;
-        //virtual json SerializeTargetData(Structures::SpellTargetData const& target) const;
+        virtual json SerializeSpellGo(Structures::SpellGoData const& data) const;
+        virtual json SerializeTargetData(Structures::SpellTargetData const& target) const;
         
-        // static helpers
+        // same everywhere (allegedly)
         static json SerializeAuthChallenge(Structures::Packed::AuthChallengeData const* data);
         static json SerializeUpdateWorldState(Structures::Packed::WorldStateInfo const* info, bool hidden);
+
+        // helpers
         static json SerializeGuidTarget(Misc::WowGuid128 const& guid);
         static json SerializeTargetLocation(Structures::TargetLocation const& loc);
     };

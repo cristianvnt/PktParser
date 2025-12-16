@@ -2,14 +2,14 @@
 #define VERSION_FACTORY_H
 
 #include "IVersionParser.h"
-#include "IJsonSerializer.h"
+#include "Common/BaseJsonSerializer.h"
 
 namespace PktParser::Versions
 {
     struct VersionContext
     {
         IVersionParser* Parser;
-        IJsonSerializer* Serializer;
+        Common::BaseJsonSerializer* Serializer;
         uint32 Build;
         std::string Patch;
     };

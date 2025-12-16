@@ -5,6 +5,7 @@
 #include "TargetLocation.h"
 
 #include <string>
+#include <optional>
 
 namespace PktParser::Structures
 {

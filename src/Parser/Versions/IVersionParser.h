@@ -1,9 +1,11 @@
 #ifndef IVERSION_PARSER_H
 #define IVERSION_PARSER_H
 
-#include "Reader/BitReader.h"
+#include "Misc/Define.h"
 
 #include <nlohmann/json.hpp>
+
+namespace PktParser::Reader { class BitReader; }
 
 namespace PktParser::Versions
 {

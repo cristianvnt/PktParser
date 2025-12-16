@@ -2,6 +2,7 @@
 #define DATABASE_H
 
 #include "Reader/PktFileReader.h"
+#include "Misc/BuildRegistry.h"
 
 #include <nlohmann/json.hpp>
 #include <cassandra.h>
@@ -10,6 +11,7 @@
 #include <deque>
 #include <mutex>
 #include <atomic>
+#include <utility>
 
 namespace PktParser::Db
 {
@@ -22,34 +24,32 @@ namespace PktParser::Db
 		CassSession* _session;
 		CassPrepared* _preparedInsert;
 
-		size_t _maxPending;
-		size_t _batchFlushSize;
-
-		std::deque<CassFuture*> _pendingInserts;
+		std::deque<std::pair<CassFuture*, size_t>> _pendingInserts;
 		std::mutex _pendingMutex;
+		size_t _maxPendingInserts;
 
 		std::atomic<size_t> _totalInserted{0};
 		std::atomic<size_t> _totalFailed{0};
 		
 		void CreateKeyspaceAndTable();
 		void PrepareStmts();
-
 		void CheckOldestInserts(size_t count);
 
 	public:
-		Database(size_t maxPending = 1000, size_t batchFlushSize = 100);
+		Database(size_t maxPendingInserts = 1000);
 		~Database();
 
+		CassSession* GetSession() const { return _session; }
+
 		void StorePacket(json const& pkt);
+
 		void Flush();
 
 		size_t GetTotalInserted() const { return _totalInserted.load(); }
 		size_t GetTotalFailed() const { return _totalFailed.load(); }
-		size_t GetPendingCount() const
-		{
-			std::lock_guard<std::mutex> lock(const_cast<std::mutex&>(_pendingMutex));
-			return _pendingInserts.size();
-		}
+
+		// extra
+		void InsertBuildMapping(Misc::BuildMappings const& mapping);
 	};
 }
 

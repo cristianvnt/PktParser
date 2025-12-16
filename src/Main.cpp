@@ -12,6 +12,7 @@
 #include "Database/Database.h"
 #include "Parser/ParallelProcessor.h"
 #include "VersionFactory.h"
+#include "Misc/BuildRegistry.h"
 
 using namespace PktParser;
 using namespace PktParser::Reader;
@@ -38,6 +39,11 @@ int main(int argc, char* argv[])
 	
 	try
 	{
+		Db::Database db(100000);
+		SeedBuildMappings(db);
+
+		BuildRegistry::Initialize(db);
+
 		PktFileReader reader(argv[1]);
 		reader.ParseFileHeader();
 		uint32 build = reader.GetFileHeader().clientBuild;
@@ -50,8 +56,6 @@ int main(int argc, char* argv[])
 		
 		VersionContext ctx = VersionFactory::Create(build);
 		LOG("Pkt build {} - Using parser for build {}", build, ctx.Build);
-		
-		Db::Database db(100000, 10000);
 
 #ifdef SYNC_PARSING_MODE
 		auto startTime = std::chrono::high_resolution_clock::now();
@@ -72,13 +76,13 @@ int main(int argc, char* argv[])
 				skippedCount++;
 				continue;
 			}
-
+			
+			char const* opcodeName = ctx.Parser->GetOpcodeName(pkt.header.opcode);
 			try
 			{
 				BitReader packetReader = pkt.CreateReader();
 				json packetData = method(packetReader);
-				json fullPacket = ctx.Serializer->SerializeFullPacket(pkt.header, ctx.Parser->GetOpcodeName(pkt.header.opcode),
-					build, pkt.pktNumber, packetData);
+				json fullPacket = ctx.Serializer->SerializeFullPacket(pkt.header, opcodeName, build, pkt.pktNumber, packetData);
 				db.StorePacket(fullPacket);
 				parsedCount++;
 
@@ -87,7 +91,7 @@ int main(int argc, char* argv[])
 			}
 			catch (std::exception const& e)
 			{
-				LOG("Failed to parse packet {} OP {}: {}", pkt.pktNumber, ctx.Parser->GetOpcodeName(pkt.header.opcode), e.what());
+				LOG("Failed to parse packet {} OP {}: {}", pkt.pktNumber, opcodeName, e.what());
 				failedCount++;
 			}
 		}

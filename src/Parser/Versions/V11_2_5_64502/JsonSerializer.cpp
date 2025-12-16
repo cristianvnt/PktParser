@@ -56,16 +56,18 @@ namespace PktParser::Versions::V11_2_5_64502
 		j["Target"] = SerializeTargetData(data.TargetData);
 
 		json hitArray = json::array();
+		hitArray.get_ref<json::array_t&>().reserve(data.HitTargets.size());
 		for (size_t i = 0; i < data.HitTargets.size(); ++i)
 		{
 			json t = SerializeGuidTarget(data.HitTargets[i]);
 			if (i < data.HitStatus.size())
 				t["HitStatus"] = data.HitStatus[i];
-			hitArray.push_back(std::move(t));
+			hitArray.emplace_back(std::move(t));
 		}
 		j["HitTargets"] = std::move(hitArray);
 
 		json missArray = json::array();
+		missArray.get_ref<json::array_t&>().reserve(data.MissTargets.size());
 		for (size_t i = 0; i < data.MissTargets.size(); ++i)
 		{
 			json t = SerializeGuidTarget(data.MissTargets[i]);
@@ -74,19 +76,20 @@ namespace PktParser::Versions::V11_2_5_64502
 				t["MissReason"] = data.MissStatus[i].MissReason;
 				t["ReflectStatus"] = data.MissStatus[i].ReflectStatus;
 			}
-			missArray.push_back(std::move(t));
+			missArray.emplace_back(std::move(t));
 		}
 		j["MissTargets"] = std::move(missArray);
 
 		if (!data.RemainingPower.empty())
 		{
 			json powerArray = json::array();
+			powerArray.get_ref<json::array_t&>().reserve(data.RemainingPower.size());
 			for (const auto& power : data.RemainingPower)
 			{
 				json powerObj;
 				powerObj["Cost"] = power.Cost;
 				powerObj["Type"] = power.Type;
-				powerArray.push_back(std::move(powerObj));
+				powerArray.emplace_back(std::move(powerObj));
 			}
 			j["RemainingPower"] = std::move(powerArray);
 		}
@@ -106,7 +109,7 @@ namespace PktParser::Versions::V11_2_5_64502
 			json pointsArray = json::array();
 			pointsArray.get_ref<json::array_t&>().reserve(data.TargetPoints.size());
 			for (auto const& point : data.TargetPoints)
-				pointsArray.push_back(SerializeTargetLocation(point));
+				pointsArray.emplace_back(SerializeTargetLocation(point));
 			j["TargetPoints"] = std::move(pointsArray);
 		}
 

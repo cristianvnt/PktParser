@@ -11,6 +11,7 @@ namespace PktParser::Versions
         IVersionParser* Parser;
         IJsonSerializer* Serializer;
         uint32 Build;
+        std::string Patch;
     };
 
     class VersionFactory

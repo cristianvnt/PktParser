@@ -7,14 +7,27 @@
 #include <fstream>
 #include <filesystem>
 #include <fmt/core.h>
+#include <array>
 
 #include "Define.h"
 #include "Enums/Direction.h"
 #include "Enums/TargetFlags.h"
 #include "Logger.h"
+#include "Database/Database.h"
 
 namespace PktParser::Misc
 {
+	inline void SeedBuildMappings(PktParser::Db::Database& db)
+	{
+		constexpr std::array<uint32, 12> builds1125 = { 63506, 63660, 63704, 63796, 63825, 63834, 63906, 64154, 64270, 64395, 64484, 64502 };
+		for (uint32 build : builds1125)
+			db.InsertBuildMapping({ build, "11.2.5", 11, 2, 5, "V11_2_5_64502" });
+
+    	constexpr std::array<uint32, 6> builds1127 = { 64632, 64704, 64725, 64743, 64772, 64797 };
+		for (uint32 build : builds1127)
+			db.InsertBuildMapping({ build, "11.2.7", 11, 2, 7, "V11_2_7_64632" });
+	}
+
 	template<typename T>
 	inline std::string FormatUnixMilliseconds(T value)
 	{

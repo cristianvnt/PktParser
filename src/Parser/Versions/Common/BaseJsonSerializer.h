@@ -14,10 +14,13 @@ namespace PktParser::Versions::Common
             uint32 build, uint32 pktNumber, json const& packetData) const override;
         json SerializePacketHead(Reader::PktHeader const& header, char const* opcodeName, uint32 build) const override;
 
+        // commons
+        //virtual json SerializeSpellGo(Structures::SpellGoData const& data) const;
+        //virtual json SerializeTargetData(Structures::SpellTargetData const& target) const;
+        
+        // static helpers
         static json SerializeAuthChallenge(Structures::Packed::AuthChallengeData const* data);
         static json SerializeUpdateWorldState(Structures::Packed::WorldStateInfo const* info, bool hidden);
-
-        // helpers
         static json SerializeGuidTarget(Misc::WowGuid128 const& guid);
         static json SerializeTargetLocation(Structures::TargetLocation const& loc);
     };

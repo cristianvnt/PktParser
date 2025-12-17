@@ -10,14 +10,11 @@ using namespace PktParser::Versions;
 
 namespace PktParser
 {
-    void ParallelProcessor::ProcessBatch(std::vector<Pkt> const& batch, size_t startIdx, size_t endIdx,
-        VersionContext& ctx, Db::Database& db, std::atomic<size_t>& parsedCount, std::atomic<size_t>& failedCount)
+    void ParallelProcessor::ProcessBatch(std::vector<Pkt> const& batch, VersionContext& ctx,
+        Db::Database& db, std::atomic<size_t>& parsedCount, std::atomic<size_t>& failedCount)
     {
-        for (size_t i = startIdx; i < endIdx; ++i)
+        for (Pkt const& pkt : batch)
         {
-            Pkt const& pkt = batch[i];
-            uint32 pktNumber = pkt.pktNumber;
-
             ParserMethod method = ctx.Parser->GetParserMethod(pkt.header.opcode);
             if (!method)
                 continue;
@@ -27,14 +24,50 @@ namespace PktParser
             {
                 BitReader pktReader = pkt.CreateReader();
                 json pktData = method(pktReader);
-                json fullPkt = ctx.Serializer->SerializeFullPacket(pkt.header, opcodeName, ctx.Build, pktNumber, pktData);
+                json fullPkt = ctx.Serializer->SerializeFullPacket(pkt.header, opcodeName, ctx.Build, pkt.pktNumber, pktData);
                 db.StorePacket(std::move(fullPkt));
                 parsedCount.fetch_add(1, std::memory_order_relaxed);
             }
             catch (std::exception const& e)
             {
-                LOG("Failed to parse packet {} OP {}: {}", pktNumber, opcodeName, e.what());
+                LOG("Failed to parse packet {} OP {}: {}", pkt.pktNumber, opcodeName, e.what());
                 failedCount.fetch_add(1, std::memory_order_relaxed);
+            }
+        }
+    }
+
+    void ParallelProcessor::WorkerThread(std::queue<std::vector<Reader::Pkt>>& batchQ, std::mutex& qMutex, std::condition_variable& qCV,
+        std::atomic<bool>& done, VersionContext& ctx, Db::Database& db, std::atomic<size_t>& parsedCount, std::atomic<size_t>& failedCount)
+    {
+        static std::atomic<int64_t> lastLogTime{0};
+        while (true)
+        {
+            std::vector<Pkt> batch;
+
+            {
+                std::unique_lock<std::mutex> lock(qMutex);
+                qCV.wait(lock, [&]{ return !batchQ.empty() || done.load(); });
+
+                if (batchQ.empty() && done.load())
+                    break;
+
+                if (!batchQ.empty())
+                {
+                    batch = std::move(batchQ.front());
+                    batchQ.pop();
+                    qCV.notify_all();
+                }
+            }
+
+            if (!batch.empty())
+            {
+                ProcessBatch(batch, ctx, db, parsedCount, failedCount);
+                auto now = std::chrono::steady_clock::now().time_since_epoch().count();
+                int64_t lastLog = lastLogTime.load(std::memory_order_relaxed);
+                
+                if (now - lastLog > 8'000'000'000LL)
+                    if (lastLogTime.compare_exchange_strong(lastLog, now))
+                        LOG("Progress: ~{} packets parsed...", parsedCount.load());
             }
         }
     }
@@ -52,11 +85,23 @@ namespace PktParser
 
         LOG("Using {} threads", threadCount);
         
-        std::vector<Pkt> batch;
-        batch.reserve(BATCH_SIZE);
+        std::queue<std::vector<Pkt>> batchQueue;
+        std::mutex queueMutex;
+        std::condition_variable queueCV;
+        std::atomic<bool> done{ false };
+
         std::atomic<size_t> parsedCount{0};
         std::atomic<size_t> skippedCount{0};
         std::atomic<size_t> failedCount{0};
+
+        std::vector<std::thread> workers;
+        workers.reserve(threadCount);
+        for (size_t i = 0; i < threadCount; ++i)
+            workers.emplace_back(WorkerThread, std::ref(batchQueue), std::ref(queueMutex), std::ref(queueCV), std::ref(done),
+                std::ref(ctx), std::ref(db), std::ref(parsedCount), std::ref(failedCount));
+
+        std::vector<Pkt> currentBatch;
+        currentBatch.reserve(BATCH_SIZE);
 
 		while (true)
 		{
@@ -71,69 +116,36 @@ namespace PktParser
                 continue;
             }
 
-            batch.push_back(pkt);
+            currentBatch.push_back(pkt);
 
-            if (batch.size() >= BATCH_SIZE)
+            if (currentBatch.size() >= BATCH_SIZE)
             {
-                //LOG("Processing batch of {} packets with {} threads...", batch.size(), threadCount);
-
-                std::vector<std::thread> workers;
-                workers.reserve(threadCount);
-                
-                size_t batchSize = batch.size();
-                size_t baseChunkSize = batchSize / threadCount;
-                size_t remainder = batchSize % threadCount;
-
-                size_t startIdx = 0;
-                for (size_t t = 0; t < threadCount; ++t)
                 {
-                    size_t chunkSize = baseChunkSize + (t < remainder ? 1 : 0);
-                    size_t endIdx = startIdx + chunkSize;
-
-                    if (chunkSize > 0)
-                    {
-                        workers.emplace_back(ProcessBatch, std::cref(batch), startIdx, endIdx, std::ref(ctx),
-                            std::ref(db), std::ref(parsedCount), std::ref(failedCount));
-                        startIdx = endIdx;
-                    }
+                    std::unique_lock<std::mutex> lock(queueMutex);
+                    if (!queueCV.wait_for(lock, std::chrono::seconds(15), [&]{ return batchQueue.size() < MAX_QED_BATCHES; }))
+                        LOG("WARN: Queue full for 15s!");
+                    
+                    batchQueue.push(std::move(currentBatch));
+                    queueCV.notify_one();
                 }
 
-                for (auto& worker : workers)
-                    worker.join();
-
-                LOG("Batch complete: {} total parsed", parsedCount.load());
-                batch.clear();
+                currentBatch.clear();
+                currentBatch.reserve(BATCH_SIZE);
             }
 		}
 
-        if (!batch.empty())
+        if (!currentBatch.empty())
         {
-            LOG("Processing final batch of {} packets...", batch.size());
-
-            std::vector<std::thread> workers;
-            workers.reserve(threadCount);
-
-            size_t batchSize = batch.size();
-            size_t baseChunkSize = batchSize / threadCount;
-            size_t remainder = batchSize % threadCount;
-
-            size_t startIdx = 0;
-            for (size_t t = 0; t < threadCount; ++t)
-            {
-                size_t chunkSize = baseChunkSize + (t < remainder ? 1 : 0);
-                size_t endIdx = startIdx + chunkSize;
-
-                if (chunkSize > 0)
-                {
-                    workers.emplace_back(ProcessBatch, std::cref(batch), startIdx, endIdx, std::ref(ctx),
-                        std::ref(db), std::ref(parsedCount), std::ref(failedCount));
-                    startIdx = endIdx;
-                }
-            }
-
-            for (auto& worker : workers)
-                worker.join();
+            std::unique_lock<std::mutex> lock(queueMutex);
+            batchQueue.push(std::move(currentBatch));
+            queueCV.notify_one();
         }
+
+        done.store(true);
+        queueCV.notify_all();
+
+        for (auto& worker : workers)
+            worker.join();
 
         auto endTime = std::chrono::high_resolution_clock::now();
 		auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);

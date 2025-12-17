@@ -24,19 +24,16 @@ namespace PktParser::Db
 		CassSession* _session;
 		CassPrepared* _preparedInsert;
 
-		std::deque<std::pair<CassFuture*, size_t>> _pendingInserts;
-		std::mutex _pendingMutex;
-		size_t _maxPendingInserts;
-
 		std::atomic<size_t> _totalInserted{0};
 		std::atomic<size_t> _totalFailed{0};
+		std::atomic<size_t> _pendingCount{0};
 		
 		void CreateKeyspaceAndTable();
 		void PrepareStmts();
-		void CheckOldestInserts(size_t count);
+		static void InsertCallback(CassFuture* future, void* data);
 
 	public:
-		Database(size_t maxPendingInserts = 1000);
+		Database();
 		~Database();
 
 		CassSession* GetSession() const { return _session; }

@@ -7,16 +7,15 @@ using namespace PktParser::Misc;
 namespace PktParser::Db
 {
 
-    Database::Database(size_t maxPendingInserts /*= 1000*/)
-        :_cluster{ nullptr }, _session{ nullptr }, _preparedInsert{ nullptr },
-        _maxPendingInserts{ maxPendingInserts }
+    Database::Database()
+        :_cluster{ nullptr }, _session{ nullptr }, _preparedInsert{ nullptr }
     {
         _cluster = cass_cluster_new();
         cass_cluster_set_contact_points(_cluster, "127.0.0.1");
 
         cass_cluster_set_queue_size_io(_cluster, 32768);
-        cass_cluster_set_core_connections_per_host(_cluster, 2);
-        cass_cluster_set_num_threads_io(_cluster, 4);
+        cass_cluster_set_core_connections_per_host(_cluster, 4);
+        cass_cluster_set_num_threads_io(_cluster, 8);
 
         _session = cass_session_new();
         CassFuture* connectFuture = cass_session_connect(_session, _cluster);
@@ -42,11 +41,6 @@ namespace PktParser::Db
         LOG("Shutting down db...");
 
         Flush();
-
-        {
-            std::lock_guard<std::mutex> lock(_pendingMutex);
-            CheckOldestInserts(_pendingInserts.size());
-        }
 
         if (_preparedInsert)
             cass_prepared_free(_preparedInsert);
@@ -161,11 +155,7 @@ namespace PktParser::Db
 
     void Database::StorePacket(json const& pkt)
     {
-        {
-            std::lock_guard<std::mutex> lock(_pendingMutex);
-            if (_pendingInserts.size() >= _maxPendingInserts)
-                CheckOldestInserts(_maxPendingInserts / 2);
-        }
+        _pendingCount.fetch_add(1, std::memory_order_relaxed);
 
         CassStatement* stmt = cass_prepared_bind(_preparedInsert);
 
@@ -191,58 +181,28 @@ namespace PktParser::Db
 
         CassFuture* future = cass_session_execute(_session, stmt);
 
-        {
-            std::lock_guard<std::mutex> pendingLock(_pendingMutex);
-            _pendingInserts.push_back({ future, 1 });
-        }
+        cass_future_set_callback(future, InsertCallback, this);
 
+        cass_future_free(future);
         cass_statement_free(stmt);
     }
 
-    void Database::CheckOldestInserts(size_t count)
+    void Database::InsertCallback(CassFuture* future, void* data)
     {
-        size_t toCheck = std::min(count, _pendingInserts.size());
+        Database* db = static_cast<Database*>(data);
 
-        for (size_t i = 0; i < toCheck; ++i)
-        {
-            auto [future, size] = _pendingInserts.front();
-            _pendingInserts.pop_front();
-
-            if (!cass_future_wait_timed(future, 15000000))
-            {
-                LOG("Insert TIMEOUT after 15 seconds");
-                _totalFailed.fetch_add(size, std::memory_order_relaxed);
-                cass_future_free(future);
-                continue;
-            }
-
-            if (cass_future_error_code(future) == CASS_OK)
-                _totalInserted.fetch_add(size, std::memory_order_relaxed);
-            else
-            {
-                const char* msg;
-                size_t msgLen;
-                cass_future_error_message(future, &msg, &msgLen);
-                LOG("Insert failed: {}", std::string(msg, msgLen));
-                _totalFailed.fetch_add(size, std::memory_order_relaxed);
-            }
-
-            cass_future_free(future);
-        }
-
-        if (toCheck > 0)
-            LOG("Completed {} inserts", toCheck);
+        if (cass_future_error_code(future) == CASS_OK)
+            db->_totalInserted.fetch_add(1, std::memory_order_relaxed);
+        else
+            db->_totalFailed.fetch_add(1, std::memory_order_relaxed);
+        
+        db->_pendingCount.fetch_sub(1, std::memory_order_relaxed);
     }
 
     void Database::Flush()
     {
-        std::lock_guard<std::mutex> lock(_pendingMutex);
-        
-        if (!_pendingInserts.empty())
-        {
-            LOG("Waiting for {} pending inserts...", _pendingInserts.size());
-            CheckOldestInserts(_pendingInserts.size());
-        }
+        if (_pendingCount.load() > 0)
+            LOG("Waiting for {} pending inserts...", _pendingCount.load());
 
         LOG("FLUSH Complete: {} inserted, {} failed", _totalInserted.load(), _totalFailed.load());
     }

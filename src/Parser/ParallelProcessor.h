@@ -8,6 +8,8 @@
 #include <vector>
 #include <thread>
 #include <atomic>
+#include <queue>
+#include <condition_variable>
 
 namespace PktParser
 {
@@ -16,10 +18,13 @@ namespace PktParser
     class ParallelProcessor
     {
     private:
-        static constexpr size_t BATCH_SIZE = 5000;
+        static constexpr size_t BATCH_SIZE = 10000;
+        static constexpr size_t MAX_QED_BATCHES = 3;
         
-        static void ProcessBatch(std::vector<Reader::Pkt> const& batch, size_t startIdx, size_t endIdx,
-            VersionContext& ctx, Db::Database& db, std::atomic<size_t>& parsedCount, std::atomic<size_t>& failedCount);
+        static void ProcessBatch(std::vector<Reader::Pkt> const& batch, VersionContext& ctx,
+            Db::Database& db, std::atomic<size_t>& parsedCount, std::atomic<size_t>& failedCount);
+        static void WorkerThread(std::queue<std::vector<Reader::Pkt>>& batchQ, std::mutex& qMutex, std::condition_variable& qCV,
+            std::atomic<bool>& done, VersionContext& ctx, Db::Database& db, std::atomic<size_t>& parsedCount, std::atomic<size_t>& failedCount);
     public:
         struct Stats
         {

@@ -31,7 +31,7 @@ int main(int argc, char* argv[])
 	
 	try
 	{
-		Db::Database db(100000);
+		Db::Database db;
 		SeedBuildMappings(db);
 
 		BuildRegistry::Initialize(db);

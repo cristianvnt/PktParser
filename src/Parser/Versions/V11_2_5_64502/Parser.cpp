@@ -56,11 +56,14 @@ namespace PktParser::Versions::V11_2_5_64502
 	{
 		return SpellHandlers::ParseSpellGoDefault(reader, GetSerializer(), ParseSpellTargetData);
 	}
+
+    char const* Parser::GetOpcodeName(uint32 opcode) const
+    {
+        return V11_2_5_64502::GetOpcodeName(opcode);
+    }
 }
 
 IMPLEMENT_SERIALIZER(V11_2_5_64502, V11_2_5_64502::JsonSerializer);
-IMPLEMENT_OPCODE_LOOKUP(V11_2_5_64502);
-
 BEGIN_PARSER_HANDLER(V11_2_5_64502)
 	REGISTER_HANDLER(SMSG_AUTH_CHALLENGE, ParseAuthChallenge)
 	REGISTER_HANDLER(SMSG_SPELL_GO, ParseSpellGo)

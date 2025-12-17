@@ -78,7 +78,7 @@ namespace PktParser::Common
 		{
 			json t = SerializeGuidTarget(data.HitTargets[i]);
 			if (i < data.HitStatus.size())
-				t["HitStatus"] = data.HitStatus[i];
+				t["HitStatus"] = data.HitStatus[i].Reason;
 			hitArray.emplace_back(std::move(t));
 		}
 		j["HitTargets"] = std::move(hitArray);

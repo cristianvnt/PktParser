@@ -8,13 +8,6 @@
         return &serializer; \
     }
 
-#define IMPLEMENT_OPCODE_LOOKUP(Namespace) \
-    char const* Namespace::Parser::GetOpcodeName(uint32 opcode) const \
-    { \
-        auto it = OpcodeNames.find(opcode); \
-        return it != OpcodeNames.end() ? it->second : "UNKNOWN_OPCODE"; \
-    }
-
 #define BEGIN_PARSER_HANDLER(Namespace) \
     ParserMethod Namespace::Parser::GetParserMethod(uint32 opcode) const \
     { \

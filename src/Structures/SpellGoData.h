@@ -51,6 +51,11 @@ namespace PktParser::Structures
 		uint32 Type;
 	};
 
+	struct SpellHitStatus
+	{
+		uint8 Reason = 0;
+	};
+
 	struct SpellMissStatus
 	{
 		uint8 MissReason;
@@ -92,7 +97,7 @@ namespace PktParser::Structures
 		SpellTargetData TargetData;
 		std::vector<WowGuid128> HitTargets;
 		std::vector<WowGuid128> MissTargets;
-		std::vector<uint8> HitStatus;
+		std::vector<SpellHitStatus> HitStatus;
 		std::vector<SpellMissStatus> MissStatus;
 		std::vector<SpellPowerData> RemainingPower;
 		RuneData Runes;

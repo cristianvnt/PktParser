@@ -64,6 +64,7 @@ namespace PktParser::Common::Parsers::SpellHandlers
             data.MissTargets[i] = Misc::ReadPackedGuid128(reader);
 
         reader.ReadChunkArray(data.HitStatus, data.HitStatusCount);
+        
         data.MissStatus.resize(data.MissStatusCount);
         for (uint32 i = 0; i < data.MissStatusCount; ++i)
         {

@@ -2,12 +2,14 @@
 #include "Parser.h"
 
 #include "Opcodes.h"
+#include "ParserMacros.h"
 
 #include "Common/Parsers/SpellHandlers.inl"
 #include "Common/Parsers/AuthHandlers.inl"
 #include "Common/Parsers/WorldStateHandlers.inl"
 
 using namespace PktParser::Common::Parsers;
+using namespace PktParser::Versions;
 
 namespace PktParser::Versions::V11_2_5_64502
 {
@@ -54,34 +56,13 @@ namespace PktParser::Versions::V11_2_5_64502
 	{
 		return SpellHandlers::ParseSpellGoDefault(reader, GetSerializer(), ParseSpellTargetData);
 	}
-		
-	JsonSerializer* Parser::GetSerializer()
-	{
-		static JsonSerializer serializer;
-		return &serializer;
-	}
-
-	ParserMethod Parser::GetParserMethod(uint32 opcode) const
-	{
-		switch(opcode)
-		{
-			case Opcodes::SMSG_AUTH_CHALLENGE:
-				return &ParseAuthChallenge;
-			case Opcodes::SMSG_SPELL_GO:
-				return &ParseSpellGo;
-			case Opcodes::SMSG_UPDATE_WORLD_STATE:
-				return &ParseUpdateWorldState;
-			case Opcodes::CMSG_AUTH_SESSION:
-			case Opcodes::SMSG_SPELL_START:
-				return nullptr;
-			default:
-				return nullptr;
-		}
-	}
-
-	char const* Parser::GetOpcodeName(uint32 opcode) const
-	{
-		auto it = OpcodeNames.find(opcode);
-		return it != OpcodeNames.end() ? it->second : "UNKNOWN_OPCODE";
-	}
 }
+
+IMPLEMENT_SERIALIZER(V11_2_5_64502, V11_2_5_64502::JsonSerializer);
+IMPLEMENT_OPCODE_LOOKUP(V11_2_5_64502);
+
+BEGIN_PARSER_HANDLER(V11_2_5_64502)
+	REGISTER_HANDLER(SMSG_AUTH_CHALLENGE, ParseAuthChallenge)
+	REGISTER_HANDLER(SMSG_SPELL_GO, ParseSpellGo)
+	REGISTER_HANDLER(SMSG_UPDATE_WORLD_STATE, ParseUpdateWorldState)
+END_PARSER_HANDLER()

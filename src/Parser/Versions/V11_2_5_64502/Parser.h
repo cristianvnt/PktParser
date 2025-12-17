@@ -18,7 +18,6 @@ namespace PktParser::Versions::V11_2_5_64502
         static json ParseSpellGo(BitReader& reader);
 		
 		static JsonSerializer* GetSerializer();
-
 		ParserMethod GetParserMethod(uint32 opcode) const override;
         char const* GetOpcodeName(uint32 opcode) const override;
         uint32 GetBuild() const override { return 64502; }

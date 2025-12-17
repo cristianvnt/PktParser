@@ -153,14 +153,13 @@ namespace PktParser::Db
         cass_future_free(prepareFuture);
     }
 
-    void Database::StorePacket(json const& pkt)
+    void Database::StorePacket(json&& pkt)
     {
         _pendingCount.fetch_add(1, std::memory_order_relaxed);
 
         CassStatement* stmt = cass_prepared_bind(_preparedInsert);
 
         auto const& header = pkt["Header"];
-        
         int packetNumber = pkt["Number"].get<int>();
         std::string direction = header["Direction"].get<std::string>();
         std::string packetName = header["PacketName"].get<std::string>();
@@ -168,7 +167,7 @@ namespace PktParser::Db
         std::string opcode = header["Opcode"].get<std::string>();
         std::string timestamp = header["Timestamp"].get<std::string>();
         int build = header["Build"].get<int>();
-        std::string pktJson = pkt.dump();
+        std::string pktJson = std::move(pkt).dump();
 
         cass_statement_bind_int32(stmt, 0, packetNumber);
         cass_statement_bind_string(stmt, 1, direction.c_str());
@@ -203,6 +202,9 @@ namespace PktParser::Db
     {
         if (_pendingCount.load() > 0)
             LOG("Waiting for {} pending inserts...", _pendingCount.load());
+
+        while (_pendingCount.load() > 0)
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
         LOG("FLUSH Complete: {} inserted, {} failed", _totalInserted.load(), _totalFailed.load());
     }

@@ -38,7 +38,7 @@ namespace PktParser::Db
 
 		CassSession* GetSession() const { return _session; }
 
-		void StorePacket(json const& pkt);
+		void StorePacket(json&& pkt);
 
 		void Flush();
 

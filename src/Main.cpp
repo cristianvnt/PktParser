@@ -74,8 +74,8 @@ int main(int argc, char* argv[])
 			{
 				BitReader packetReader = pkt.CreateReader();
 				json packetData = method(packetReader);
-				json fullPacket = ctx.Serializer->SerializeFullPacket(pkt.header, opcodeName, build, pkt.pktNumber, packetData);
-				db.StorePacket(fullPacket);
+				json fullPacket = ctx.Serializer->SerializeFullPacket(pkt.header, opcodeName, build, pkt.pktNumber, std::move(packetData));
+				db.StorePacket(std::move(fullPacket));
 				parsedCount++;
 
 				if (parsedCount % 10000 == 0)

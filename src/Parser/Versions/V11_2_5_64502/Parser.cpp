@@ -1,35 +1,56 @@
 #include "Parser.h"
 #include "Opcodes.h"
 
+#include "Common/Parsers/SpellHandlers.inl"
+#include "Common/Parsers/AuthHandlers.inl"
+#include "Common/Parsers/WorldStateHandlers.inl"
+
+using namespace PktParser::Common::Parsers;
+
 namespace PktParser::Versions::V11_2_5_64502
 {
-	void Parser::ParseSpellTargetData(BitReader& reader, Structures::SpellTargetData& targetData)
+	json Parser::ParseAuthChallenge(BitReader& reader)
+    {
+        return AuthHandlers::ParseAuthChallengeDefault(reader, GetSerializer());
+    }
+
+	json Parser::ParseUpdateWorldState(BitReader& reader)
+    {
+        return WorldStateHandlers::ParseUpdateWorldStateDefault(reader, GetSerializer());
+    }
+
+	static void ParseSpellTargetData(BitReader& reader, Structures::SpellTargetData& targetData)
+    {
+        targetData.Flags = reader.ReadUInt32();
+        targetData.Unit = Misc::ReadPackedGuid128(reader);
+        targetData.Item = Misc::ReadPackedGuid128(reader);
+
+        bool hasSrc = reader.ReadBit();
+        bool hasDst = reader.ReadBit();
+        bool hasOrientation = reader.ReadBit();
+        bool hasMapID = reader.ReadBit();
+        uint32 nameLength = reader.ReadBits(7);
+
+        reader.ResetBitReader();
+
+        if (hasSrc)
+            targetData.SrcLocation = SpellHandlers::ReadLocation(reader);
+
+        if (hasDst)
+            targetData.DstLocation = SpellHandlers::ReadLocation(reader);
+
+        if (hasOrientation)
+            targetData.Orientation = reader.ReadFloat();
+
+        if (hasMapID)
+            targetData.MapID = reader.ReadUInt32();
+
+        targetData.Name = reader.ReadWoWString(nameLength);
+    }
+
+	json Parser::ParseSpellGo(BitReader& reader)
 	{
-		targetData.Flags = reader.ReadUInt32();
-		targetData.Unit = Misc::ReadPackedGuid128(reader);
-		targetData.Item = Misc::ReadPackedGuid128(reader);
-
-		bool hasSrc = reader.ReadBit();
-		bool hasDst = reader.ReadBit();
-		bool hasOrientation = reader.ReadBit();
-		bool hasMapID = reader.ReadBit();
-		uint32 nameLength = reader.ReadBits(7);
-
-		reader.ResetBitReader();
-
-		if (hasSrc)
-			targetData.SrcLocation = ReadLocation(reader);
-
-		if (hasDst)
-			targetData.DstLocation = ReadLocation(reader);
-
-		if (hasOrientation)
-			targetData.Orientation = reader.ReadFloat();
-
-		if (hasMapID)
-			targetData.MapID = reader.ReadUInt32();
-
-		targetData.Name = reader.ReadWoWString(nameLength);
+		return SpellHandlers::ParseSpellGoDefault(reader, GetSerializer(), ParseSpellTargetData);
 	}
 		
 	JsonSerializer* Parser::GetSerializer()

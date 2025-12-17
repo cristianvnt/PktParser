@@ -10,7 +10,7 @@ using namespace PktParser::Reader;
 using namespace PktParser::Structures;
 using namespace PktParser::Structures::Packed;
 
-namespace PktParser::Versions::Common
+namespace PktParser::Common
 {
     json BaseJsonSerializer::SerializeFullPacket(PktHeader const& header, char const* opcodeName, 
         uint32 build, uint32 pktNumber, json const& packetData) const

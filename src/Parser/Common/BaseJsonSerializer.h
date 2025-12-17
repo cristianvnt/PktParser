@@ -10,7 +10,7 @@
 #include <fmt/core.h>
 #include <nlohmann/json.hpp>
 
-namespace PktParser::Versions::Common
+namespace PktParser::Common
 {
     using json = nlohmann::ordered_json;
 
@@ -23,13 +23,13 @@ namespace PktParser::Versions::Common
             uint32 build, uint32 pktNumber, json const& packetData) const;
         json SerializePacketHead(Reader::PktHeader const& header, char const* opcodeName, uint32 build) const;
 
-        // commons
-        virtual json SerializeSpellGo(Structures::SpellGoData const& data) const;
-        virtual json SerializeTargetData(Structures::SpellTargetData const& target) const;
-        
         // same everywhere (allegedly)
         static json SerializeAuthChallenge(Structures::Packed::AuthChallengeData const* data);
         static json SerializeUpdateWorldState(Structures::Packed::WorldStateInfo const* info, bool hidden);
+
+        // commons
+        virtual json SerializeSpellGo(Structures::SpellGoData const& data) const;
+        virtual json SerializeTargetData(Structures::SpellTargetData const& target) const;
 
         // helpers
         static json SerializeGuidTarget(Misc::WowGuid128 const& guid);

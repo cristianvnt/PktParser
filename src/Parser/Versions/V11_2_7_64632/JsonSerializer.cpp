@@ -3,7 +3,6 @@
 #include "Structures/SpellTargetData.h"
 #include "V11_2_5_64502/JsonSerializer.h"
 
-using namespace PktParser::Versions::Common;
 using namespace PktParser::Reader;
 using namespace PktParser::Misc;
 using namespace PktParser::Structures;

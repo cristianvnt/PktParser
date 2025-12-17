@@ -1,7 +1,7 @@
 #ifndef PARSER_V11_2_5_64502_H
 #define PARSER_V11_2_5_64502_H
 
-#include "Common/BaseParser.h"
+#include "IVersionParser.h"
 #include "JsonSerializer.h"
 #include "Structures/SpellTargetData.h"
 #include "Structures/TargetLocation.h"
@@ -10,16 +10,15 @@ namespace PktParser::Versions::V11_2_5_64502
 {
 	using BitReader = PktParser::Reader::BitReader;
 
-	class Parser : public Common::BaseParser<Parser>
+	class Parser : public IVersionParser
 	{
-		friend class Common::BaseParser<Parser>;
-
-	private:
-		static void ParseSpellTargetData(BitReader& reader, Structures::SpellTargetData& targetData);
+	public:
+		static json ParseAuthChallenge(BitReader& reader);
+        static json ParseUpdateWorldState(BitReader& reader);
+        static json ParseSpellGo(BitReader& reader);
 		
 		static JsonSerializer* GetSerializer();
 
-	public:
 		ParserMethod GetParserMethod(uint32 opcode) const override;
         char const* GetOpcodeName(uint32 opcode) const override;
         uint32 GetBuild() const override { return 64502; }

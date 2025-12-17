@@ -1,6 +1,6 @@
+#include "pchdef.h"
 #include "JsonSerializer.h"
 
-#include "Structures/SpellTargetData.h"
 #include "V11_2_5_64502/JsonSerializer.h"
 
 using namespace PktParser::Reader;

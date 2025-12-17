@@ -34,9 +34,17 @@ find_path(CASSANDRA_INCLUDE_DIR NAMES cassandra.h REQUIRED)
 find_package(ZLIB REQUIRED)
 find_package(Threads REQUIRED)
 
+set(PCH_HEADER "${CMAKE_CURRENT_SOURCE_DIR}/src/PCH/pchdef.h")
+set(PCH_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/src/PCH/pchdef.cpp")
+
 file(GLOB_RECURSE SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp)
 
-add_executable(${PROJECT_NAME} ${SOURCES})
+add_executable(${PROJECT_NAME}
+	${PCH_SOURCE}
+	${SOURCES}
+)
+
+target_precompile_headers(${PROJECT_NAME} PRIVATE ${PCH_HEADER})
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_options(${PROJECT_NAME} PRIVATE -O0 -g3 -Wall -Wextra -Wpedantic)
@@ -49,8 +57,10 @@ endif()
 
 target_include_directories(${PROJECT_NAME} PRIVATE 
 	${CMAKE_CURRENT_SOURCE_DIR}/src
+	${CMAKE_CURRENT_SOURCE_DIR}/src/PCH
 	${CMAKE_CURRENT_SOURCE_DIR}/src/Parser
 	${CMAKE_CURRENT_SOURCE_DIR}/src/Parser/Versions
+	${CMAKE_CURRENT_SOURCE_DIR}/src/Parser/Common
 	${CASSANDRA_INCLUDE_DIR}
 )
 

@@ -1,9 +1,6 @@
-#include "PktFileReader.h"
-#include "Misc/Logger.h"
-#include "Misc/Exceptions.h"
-#include "Misc/Utilities.h"
+#include "pchdef.h"
 
-#include <algorithm>
+#include "PktFileReader.h"
 
 using namespace PktParser::Enums;
 

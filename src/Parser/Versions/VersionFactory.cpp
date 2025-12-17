@@ -1,7 +1,5 @@
+#include "pchdef.h"
 #include "VersionFactory.h"
-
-#include "Misc/Logger.h"
-#include "Misc/BuildRegistry.h"
 
 #include "V11_2_5_64502/Parser.h"
 #include "V11_2_7_64632/Parser.h"

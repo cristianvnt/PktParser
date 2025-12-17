@@ -1,8 +1,5 @@
+#include "pchdef.h"
 #include "Database.h"
-
-#include "Misc/Define.h"
-#include "Misc/Exceptions.h"
-#include "Misc/Logger.h"
 
 using namespace PktParser::Reader;
 using namespace PktParser::Misc;

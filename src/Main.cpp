@@ -1,13 +1,5 @@
-#include <fmt/core.h>
-#include <cstdint>
-#include <filesystem>
-#include <iostream>
-#include <future>
+#include "pchdef.h"
 
-#include "Misc/Utilities.h"
-#include "Misc/Exceptions.h"
-#include "Misc/Logger.h"
-#include "Reader/BitReader.h"
 #include "Reader/PktFileReader.h"
 #include "Database/Database.h"
 #include "Parser/ParallelProcessor.h"

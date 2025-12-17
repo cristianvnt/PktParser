@@ -1,4 +1,6 @@
+#include "pchdef.h"
 #include "Parser.h"
+
 #include "Opcodes.h"
 
 #include "Common/Parsers/SpellHandlers.inl"

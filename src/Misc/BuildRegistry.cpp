@@ -16,7 +16,7 @@ namespace PktParser::Misc
     {
         _mappings.clear();
 
-        char const* query = "SELECT build, patch, major, minor, patch_num, parser_version FROM wow_packets.build_mappings";
+        char const* query = "SELECT patch, build, deploy_timestamp, parser_version FROM wow_packets.build_mappings";
                             
         CassStatement* stmt = cass_statement_new(query, 0);
         CassFuture* future = cass_session_execute(db.GetSession(), stmt);
@@ -24,7 +24,7 @@ namespace PktParser::Misc
         CassResult const* result = cass_future_get_result(future);
         if (!result)
         {
-            LOG("WARN: Couldnt load build mappings from database!");
+            LOG("WARN: Couldnt load build mappings from database");
             cass_future_free(future);
             cass_statement_free(stmt);
             return;
@@ -36,20 +36,19 @@ namespace PktParser::Misc
             CassRow const* row = cass_iterator_get_row(rows);
 
             BuildMappings mapping;
-            cass_value_get_int32(cass_row_get_column(row, 0), (cass_int32_t*)&mapping.Build);
-
+            
             char const* patch;
             size_t patchLen;
-            cass_value_get_string(cass_row_get_column(row, 1), &patch, &patchLen);
+            cass_value_get_string(cass_row_get_column(row, 0), &patch, &patchLen);
             mapping.Patch = std::string(patch, patchLen);
 
-            cass_value_get_int32(cass_row_get_column(row, 2), (cass_int32_t*)&mapping.Major);
-            cass_value_get_int32(cass_row_get_column(row, 3), (cass_int32_t*)&mapping.Minor);
-            cass_value_get_int32(cass_row_get_column(row, 4), (cass_int32_t*)&mapping.PatchNum);
+            cass_value_get_int32(cass_row_get_column(row, 1), (cass_int32_t*)&mapping.Build);
+
+            cass_value_get_int64(cass_row_get_column(row, 2), &mapping.DeployTimestamp);
 
             char const* parserVer;
             size_t parserVerLen;
-            cass_value_get_string(cass_row_get_column(row, 5), &parserVer, &parserVerLen);
+            cass_value_get_string(cass_row_get_column(row, 3), &parserVer, &parserVerLen);
             mapping.ParserVersion = std::string(parserVer, parserVerLen);
 
             _mappings[mapping.Build] = mapping;

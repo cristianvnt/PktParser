@@ -13,11 +13,9 @@ namespace PktParser::Misc
 {
     struct BuildMappings
     {
-        uint32 Build;
         std::string Patch;
-        uint8 Major;
-        uint8 Minor;
-        uint8 PatchNum;
+        uint32 Build;
+        int64 DeployTimestamp;
         std::string ParserVersion;
     };
 

@@ -112,12 +112,11 @@ namespace PktParser::Db
 
         const char* createBuildMappingsTable = 
             "CREATE TABLE IF NOT EXISTS wow_packets.build_mappings ("
-                "build int PRIMARY KEY,"
                 "patch text,"
-                "major int,"
-                "minor int,"
-                "patch_num int,"
-                "parser_version text"
+                "build int,"
+                "deploy_timestamp timestamp,"
+                "parser_version text,"
+                "PRIMARY KEY (patch, build)"
             ")";
 
         stmt = cass_statement_new(createBuildMappingsTable, 0);
@@ -252,17 +251,15 @@ namespace PktParser::Db
     void Database::InsertBuildMapping(BuildMappings const& mapping)
     {
         static char const* query =
-        "INSERT INTO wow_packets.build_mappings (build, patch, major, minor, patch_num, parser_version) "
-        "VALUES (?, ?, ?, ?, ?, ?) IF NOT EXISTS";
+        "INSERT INTO wow_packets.build_mappings (patch, build, deploy_timestamp, parser_version) "
+        "VALUES (?, ?, ?, ?) IF NOT EXISTS";
 
-        CassStatement* stmt = cass_statement_new(query, 6);
+        CassStatement* stmt = cass_statement_new(query, 4);
 
-        cass_statement_bind_int32(stmt, 0, mapping.Build);
-        cass_statement_bind_string(stmt, 1, mapping.Patch.c_str());
-        cass_statement_bind_int32(stmt, 2, mapping.Major);
-        cass_statement_bind_int32(stmt, 3, mapping.Minor);
-        cass_statement_bind_int32(stmt, 4, mapping.PatchNum);
-        cass_statement_bind_string(stmt, 5, mapping.ParserVersion.c_str());
+        cass_statement_bind_string(stmt, 0, mapping.Patch.c_str());
+        cass_statement_bind_int32(stmt, 1, mapping.Build);
+        cass_statement_bind_int64(stmt, 2, mapping.DeployTimestamp);
+        cass_statement_bind_string(stmt, 3, mapping.ParserVersion.c_str());
 
         CassFuture* future = cass_session_execute(_session, stmt);
         cass_future_wait(future);

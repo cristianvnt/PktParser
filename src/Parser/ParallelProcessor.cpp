@@ -1,7 +1,7 @@
 #include "pchdef.h"
 #include "ParallelProcessor.h"
 
-#include "V11_2_5_64502/JsonSerializer.h"
+#include "V11_2_5_63506/JsonSerializer.h"
 #include "V11_2_7_64632/JsonSerializer.h"
 
 using namespace PktParser::Reader;
@@ -65,7 +65,7 @@ namespace PktParser
                 auto now = std::chrono::steady_clock::now().time_since_epoch().count();
                 int64_t lastLog = lastLogTime.load(std::memory_order_relaxed);
                 
-                if (now - lastLog > 8'000'000'000LL)
+                if (now - lastLog > 5'000'000'000LL)
                     if (lastLogTime.compare_exchange_strong(lastLog, now))
                         LOG("Progress: ~{} packets parsed...", parsedCount.load());
             }

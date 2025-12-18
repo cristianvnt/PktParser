@@ -1,10 +1,11 @@
 #include "pchdef.h"
 #include "VersionFactory.h"
+#include "Database/BuildInfo.h"
 
-#include "V11_2_5_64502/Parser.h"
+#include "V11_2_5_63506/Parser.h"
 #include "V11_2_7_64632/Parser.h"
 
-#include "V11_2_5_64502/JsonSerializer.h"
+#include "V11_2_5_63506/JsonSerializer.h"
 #include "V11_2_7_64632/JsonSerializer.h"
 
 using namespace PktParser::Misc;
@@ -15,29 +16,25 @@ namespace PktParser::Versions
     {
         VersionContext ctx{};
         ctx.Build = build;
-        BuildMappings const* mapping = BuildRegistry::GetMappings(build);
-        if (!mapping)
+        auto mapping = Db::BuildInfo::Instance().GetMapping(build);
+        if (!mapping.has_value())
         {
             ctx.Parser = nullptr;
             ctx.Serializer = nullptr;
             return ctx;
         }
 
-        ctx.Patch = mapping->Patch;
+        ctx.Patch = mapping->PatchVersion;
 
-        if (mapping->ParserVersion == "V11_2_5_64502")
+        if (mapping->ParserVersion == "V11_2_5_63506")
         {
-            ctx.Parser = new V11_2_5_64502::Parser();
-            ctx.Serializer = new V11_2_5_64502::JsonSerializer();
+            ctx.Parser = new V11_2_5_63506::Parser();
+            ctx.Serializer = new V11_2_5_63506::JsonSerializer();
         }
         else if (mapping->ParserVersion == "V11_2_7_64632")
         {
             ctx.Parser = new V11_2_7_64632::Parser();
             ctx.Serializer = new V11_2_7_64632::JsonSerializer();
-        }
-        else if (mapping->ParserVersion == "V11_2_7_64877")
-        {
-            // TODO
         }
         else
         {
@@ -59,6 +56,6 @@ namespace PktParser::Versions
 
     bool VersionFactory::IsSupported(uint32 build)
     {
-        return BuildRegistry::IsSupported(build);
+        return Db::BuildInfo::Instance().IsSupported(build);
     }
 }

@@ -1,5 +1,6 @@
 #include "pchdef.h"
 #include "Database.h"
+#include "Config.h"
 
 using namespace PktParser::Reader;
 using namespace PktParser::Misc;
@@ -11,7 +12,9 @@ namespace PktParser::Db
         :_cluster{ nullptr }, _session{ nullptr }, _preparedInsert{ nullptr }
     {
         _cluster = cass_cluster_new();
-        cass_cluster_set_contact_points(_cluster, "127.0.0.1");
+
+        std::string cassandraHost = Config::GetCassandraHost();
+        cass_cluster_set_contact_points(_cluster, cassandraHost.c_str());
 
         cass_cluster_set_queue_size_io(_cluster, 32768);
         cass_cluster_set_core_connections_per_host(_cluster, 4);
@@ -104,30 +107,6 @@ namespace PktParser::Db
         cass_future_free(future);
         cass_statement_free(stmt);
 
-        const char* createBuildMappingsTable = 
-            "CREATE TABLE IF NOT EXISTS wow_packets.build_mappings ("
-                "patch text,"
-                "build int,"
-                "deploy_timestamp timestamp,"
-                "parser_version text,"
-                "PRIMARY KEY (patch, build)"
-            ")";
-
-        stmt = cass_statement_new(createBuildMappingsTable, 0);
-        future = cass_session_execute(_session, stmt);
-        cass_future_wait(future);
-
-        if (cass_future_error_code(future) != CASS_OK)
-        {
-            const char* msg;
-            size_t msgLen;
-            cass_future_error_message(future, &msg, &msgLen);
-            throw ParseException{ "Could not create >build_mappings< table: " + std::string(msg, msgLen) };
-        }
-
-        cass_future_free(future);
-        cass_statement_free(stmt);
-
         LOG("Keyspace and tables ready");
     }
 
@@ -207,34 +186,5 @@ namespace PktParser::Db
             std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
         LOG("FLUSH Complete: {} inserted, {} failed", _totalInserted.load(), _totalFailed.load());
-    }
-
-    // extra
-    void Database::InsertBuildMapping(BuildMappings const& mapping)
-    {
-        static char const* query =
-        "INSERT INTO wow_packets.build_mappings (patch, build, deploy_timestamp, parser_version) "
-        "VALUES (?, ?, ?, ?) IF NOT EXISTS";
-
-        CassStatement* stmt = cass_statement_new(query, 4);
-
-        cass_statement_bind_string(stmt, 0, mapping.Patch.c_str());
-        cass_statement_bind_int32(stmt, 1, mapping.Build);
-        cass_statement_bind_int64(stmt, 2, mapping.DeployTimestamp);
-        cass_statement_bind_string(stmt, 3, mapping.ParserVersion.c_str());
-
-        CassFuture* future = cass_session_execute(_session, stmt);
-        cass_future_wait(future);
-
-        if (cass_future_error_code(future) != CASS_OK)
-        {
-            const char* msg;
-            size_t len;
-            cass_future_error_message(future, &msg, &len);
-            LOG("Failed to insert build mapping {}: {}", mapping.Build, std::string(msg, len));
-        }
-
-        cass_future_free(future);
-        cass_statement_free(stmt);
     }
 }

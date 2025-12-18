@@ -2,7 +2,6 @@
 #define DATABASE_H
 
 #include "Reader/PktFileReader.h"
-#include "Misc/BuildRegistry.h"
 
 #include <nlohmann/json.hpp>
 #include <cassandra.h>
@@ -44,9 +43,6 @@ namespace PktParser::Db
 
 		size_t GetTotalInserted() const { return _totalInserted.load(); }
 		size_t GetTotalFailed() const { return _totalFailed.load(); }
-
-		// extra
-		void InsertBuildMapping(Misc::BuildMappings const& mapping);
 	};
 }
 

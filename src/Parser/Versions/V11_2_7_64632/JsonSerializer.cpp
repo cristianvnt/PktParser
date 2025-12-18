@@ -1,7 +1,7 @@
 #include "pchdef.h"
 #include "JsonSerializer.h"
 
-#include "V11_2_5_64502/JsonSerializer.h"
+#include "V11_2_5_63506/JsonSerializer.h"
 
 using namespace PktParser::Reader;
 using namespace PktParser::Misc;

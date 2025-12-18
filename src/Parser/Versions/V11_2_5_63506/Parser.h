@@ -6,7 +6,7 @@
 #include "Structures/SpellTargetData.h"
 #include "Structures/TargetLocation.h"
 
-namespace PktParser::Versions::V11_2_5_64502
+namespace PktParser::Versions::V11_2_5_63506
 {
 	using BitReader = PktParser::Reader::BitReader;
 

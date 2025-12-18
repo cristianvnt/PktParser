@@ -13,23 +13,9 @@
 #include "Enums/Direction.h"
 #include "Enums/TargetFlags.h"
 #include "Logger.h"
-#include "Database/Database.h"
 
 namespace PktParser::Misc
 {
-	inline void SeedBuildMappings(PktParser::Db::Database& db)
-	{
-		int64 currTimestamp = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-
-		constexpr std::array<uint32, 12> builds1125 = { 63506, 63660, 63704, 63796, 63825, 63834, 63906, 64154, 64270, 64395, 64484, 64502 };
-		for (uint32 build : builds1125)
-			db.InsertBuildMapping({ "11.2.5", build, currTimestamp, "V11_2_5_64502" });
-
-    	constexpr std::array<uint32, 6> builds1127 = { 64632, 64704, 64725, 64743, 64772, 64797 };
-		for (uint32 build : builds1127)
-			db.InsertBuildMapping({ "11.2.7", build, currTimestamp, "V11_2_7_64632" });
-	}
-
 	template<typename T>
 	inline std::string FormatUnixMilliseconds(T value)
 	{

@@ -4,12 +4,14 @@
 #include "Database/Database.h"
 #include "Parser/ParallelProcessor.h"
 #include "VersionFactory.h"
-#include "Misc/BuildRegistry.h"
+#include "Database/BuildInfo.h"
+#include "Database/OpcodeCache.h"
 
 using namespace PktParser;
 using namespace PktParser::Reader;
 using namespace PktParser::Misc;
 using namespace PktParser::Versions;
+using namespace PktParser::Db;
 
 using Stats = PktParser::ParallelProcessor::Stats;
 
@@ -19,35 +21,63 @@ int main(int argc, char* argv[])
 
 	if (argc < 2)
 	{
-		LOG("Usage: {} <path-to-pkt-file>", argv[0]);
-		return 1;
+		LOG("Usage: {} <path-to-pkt-file> [--parser-version V11_2_5_63506]", argv[0]);
+        return 1;
 	}
+
+	std::string pktFilePath = argv[1];
+    std::string parserVersion = "";
+    
+    for (int i = 2; i < argc; i++)
+    {
+        std::string arg = argv[i];
+        if (arg == "--parser-version" && i + 1 < argc)
+        {
+            parserVersion = argv[i + 1];
+            i++;
+        }
+    }
 
 #ifdef SYNC_PARSING_MODE
 	LOG("Running in SYNC mode");
 #else
 	LOG("Running in PARALLEL mode");
-#endif	
+#endif
 	
 	try
 	{
-		Db::Database db;
-		SeedBuildMappings(db);
+		BuildInfo::Instance().Initialize();
 
-		BuildRegistry::Initialize(db);
+		Database db;
 
-		PktFileReader reader(argv[1]);
+		PktFileReader reader(pktFilePath.c_str());
 		reader.ParseFileHeader();
 		uint32 build = reader.GetFileHeader().clientBuild;
 		
-		if (!VersionFactory::IsSupported(build))
+		if (parserVersion.empty())
 		{
-			LOG("ERROR: Build {} is not supported!", build);
-            return 1;
+			auto mapping = BuildInfo::Instance().GetMapping(build);
+            if (!mapping.has_value())
+            {
+                LOG("ERROR: Build {} is not supported!", build);
+                return 1;
+            }
+			parserVersion = mapping->ParserVersion;
+			LOG("Pkt build {} (patch {}) - Using parser: {}", build, mapping->PatchVersion, parserVersion);
 		}
-		
+		else
+			LOG("Pkt build {} - Using forced parser: {}", build, parserVersion);
+
+		OpcodeCache::Instance().LoadFromDatabase(parserVersion);
+
+		if (!VersionFactory::IsSupported(build))
+        {
+            LOG("ERROR: Build {} is not supported!", build);
+            return 1;
+        }
+
 		VersionContext ctx = VersionFactory::Create(build);
-		LOG("Pkt build {} - Using parser for build {}", build, ctx.Build);
+        LOG("Parser initialized for build {}", ctx.Build);
 
 #ifdef SYNC_PARSING_MODE
 		auto startTime = std::chrono::high_resolution_clock::now();

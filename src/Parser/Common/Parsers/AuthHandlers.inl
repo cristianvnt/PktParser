@@ -3,7 +3,6 @@
 
 #include "Reader/BitReader.h"
 #include "Structures/Packed/AuthChallengeData.h"
-#include <nlohmann/json.hpp>
 
 namespace PktParser::Common::Parsers::AuthHandlers
 {

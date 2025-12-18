@@ -22,6 +22,7 @@
 // third-party
 #include <fmt/core.h>
 #include <nlohmann/json.hpp>
+#include <pqxx/pqxx>
 
 // stable headers
 #include "Misc/Define.h"

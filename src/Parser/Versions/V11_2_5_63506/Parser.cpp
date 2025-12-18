@@ -3,6 +3,7 @@
 
 #include "Opcodes.h"
 #include "ParserMacros.h"
+#include "Database/OpcodeCache.h"
 
 #include "Common/Parsers/SpellHandlers.inl"
 #include "Common/Parsers/AuthHandlers.inl"
@@ -10,8 +11,9 @@
 
 using namespace PktParser::Common::Parsers;
 using namespace PktParser::Versions;
+using namespace PktParser::Db;
 
-namespace PktParser::Versions::V11_2_5_64502
+namespace PktParser::Versions::V11_2_5_63506
 {
 	json Parser::ParseAuthChallenge(BitReader& reader)
     {
@@ -59,12 +61,12 @@ namespace PktParser::Versions::V11_2_5_64502
 
     char const* Parser::GetOpcodeName(uint32 opcode) const
     {
-        return V11_2_5_64502::GetOpcodeName(opcode);
+        return OpcodeCache::Instance().GetOpcodeName(opcode);
     }
 }
 
-IMPLEMENT_SERIALIZER(V11_2_5_64502, V11_2_5_64502::JsonSerializer);
-BEGIN_PARSER_HANDLER(V11_2_5_64502)
+IMPLEMENT_SERIALIZER(V11_2_5_63506, V11_2_5_63506::JsonSerializer);
+BEGIN_PARSER_HANDLER(V11_2_5_63506)
 	REGISTER_HANDLER(SMSG_AUTH_CHALLENGE, ParseAuthChallenge)
 	REGISTER_HANDLER(SMSG_SPELL_GO, ParseSpellGo)
 	REGISTER_HANDLER(SMSG_UPDATE_WORLD_STATE, ParseUpdateWorldState)

@@ -6,6 +6,7 @@
 #include "Structures/TargetLocation.h"
 #include "Structures/Packed/AuthChallengeData.h"
 #include "Structures/Packed/WorldStateInfo.h"
+#include "Reader/PktFileReader.h"
 #include "Misc/Utilities.h"
 #include <fmt/core.h>
 #include <nlohmann/json.hpp>

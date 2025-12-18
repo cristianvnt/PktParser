@@ -29,8 +29,19 @@ FetchContent_Declare(json
 )
 FetchContent_MakeAvailable(json)
 
+FetchContent_Declare(libpqxx
+    GIT_REPOSITORY https://github.com/jtv/libpqxx.git
+    GIT_TAG 7.10.4
+)
+set(BUILD_DOC OFF CACHE BOOL "" FORCE)
+set(BUILD_TEST OFF CACHE BOOL "" FORCE)
+set(SKIP_BUILD_TEST ON CACHE BOOL "" FORCE)
+
+FetchContent_MakeAvailable(libpqxx)
+
 find_library(CASSANDRA_LIBRARY NAMES cassandra REQUIRED)
 find_path(CASSANDRA_INCLUDE_DIR NAMES cassandra.h REQUIRED)
+
 find_package(ZLIB REQUIRED)
 find_package(Threads REQUIRED)
 
@@ -67,6 +78,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 target_link_libraries(${PROJECT_NAME} PRIVATE 
 	fmt::fmt
 	nlohmann_json::nlohmann_json
+	pqxx
 	${CASSANDRA_LIBRARY}
 	${ZLIB_LIBRARIES}
 	Threads::Threads

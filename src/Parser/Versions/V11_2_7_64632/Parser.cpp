@@ -3,6 +3,7 @@
 
 #include "Opcodes.h"
 #include "ParserMacros.h"
+#include "Database/OpcodeCache.h"
 
 #include "Common/Parsers/SpellHandlers.inl"
 #include "Common/Parsers/AuthHandlers.inl"
@@ -11,6 +12,7 @@
 using namespace PktParser::Reader;
 using namespace PktParser::Versions;
 using namespace PktParser::Misc;
+using namespace PktParser::Db;
 using namespace PktParser::Enums;
 using namespace PktParser::Structures;
 using namespace PktParser::Structures::Packed;
@@ -28,7 +30,7 @@ namespace PktParser::Versions::V11_2_7_64632
         return WorldStateHandlers::ParseUpdateWorldStateDefault(reader, GetSerializer());
     }
 
-	static void ParseSpellTargetData(BitReader& reader, Structures::SpellTargetData& targetData)
+	static void ParseSpellTargetData(BitReader& reader, SpellTargetData& targetData)
     {
         targetData.Flags = reader.ReadUInt32();
         targetData.Unit = Misc::ReadPackedGuid128(reader);
@@ -67,7 +69,7 @@ namespace PktParser::Versions::V11_2_7_64632
 
     char const* Parser::GetOpcodeName(uint32 opcode) const
     {
-        return V11_2_7_64632::GetOpcodeName(opcode);
+        return OpcodeCache::Instance().GetOpcodeName(opcode);
     }
 }
 

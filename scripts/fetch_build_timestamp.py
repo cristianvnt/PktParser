@@ -50,7 +50,7 @@ def FetchBuildDirectories():
                 name = item.get('name', '')
                 if name.isdigit():
                     buildNum = int(name)
-                    if 2000 <= buildNum <= 99999:
+                    if 1000 <= buildNum <= 99999:
                         builds.append(buildNum)
         
         buildList = sorted(builds, reverse=True)
@@ -121,7 +121,7 @@ def Main():
     print("")
     
     startIdx = 0
-    endIdx = 50
+    endIdx = 10
     
     if len(sys.argv) >= 3:
         startIdx = int(sys.argv[1])

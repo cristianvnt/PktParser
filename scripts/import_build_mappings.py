@@ -23,9 +23,6 @@ DB_CONFIG = \
 }
 
 def ExtractBuildMappings(content):
-    """
-    Parse GetOpcodeDefiningBuild by reading sequentially.
-    """
     mappings = {}
     
     lines = content.split('\n')
@@ -120,10 +117,6 @@ def Main():
     
     print(f"  Inserted: {inserted}")
     print(f"  Updated: {updated}")
-    print("")
-    print("================================")
-    print("Complete")
-    print("================================")
 
 if __name__ == "__main__":
     Main()

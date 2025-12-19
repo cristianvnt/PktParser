@@ -5,7 +5,7 @@ DB_USER="wowparser"
 DB_HOST="localhost"
 
 echo "================================"
-echo "Creating WoW Metadata Database"
+echo "Creating wow_metadata Database"
 echo "================================"
 echo ""
 
@@ -26,11 +26,6 @@ psql -U $DB_USER -d $DB_NAME -h $DB_HOST < scripts/create_tables.sql
 
 if [ $? -eq 0 ]; then
     echo "Tables created successfully"
-    echo ""
-    echo "================================"
-    echo "Setup Complete"
-    echo "================================"
-    echo ""
     echo "Database '$DB_NAME' is READY"
 else
     echo ""

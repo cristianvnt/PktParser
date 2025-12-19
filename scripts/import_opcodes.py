@@ -204,10 +204,5 @@ def Main():
 
     Conn.close();
 
-    print("")
-    print("================================")
-    print("Import Complete")
-    print("================================")
-
 if __name__ == "__main__":
     Main()

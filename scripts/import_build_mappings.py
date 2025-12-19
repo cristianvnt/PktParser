@@ -67,6 +67,13 @@ def SeedDatabase(mappings):
     for buildNumber, info in sorted(mappings.items()):
         cursor.execute(
         """
+            SELECT 1 FROM builds WHERE build_number = %s
+        """, (buildNumber,))
+        
+        exists = cursor.fetchone() is not None
+
+        cursor.execute(
+        """
             INSERT INTO builds (build_number, patch_version, parser_version)
             VALUES (%s, %s, %s)
             ON CONFLICT (build_number) 
@@ -75,10 +82,10 @@ def SeedDatabase(mappings):
                 parser_version = EXCLUDED.parser_version
         """, (buildNumber, info['patch_version'], info['parser_version']))
         
-        if cursor.rowcount == 1:
-            inserted += 1
-        else:
+        if exists == 1:
             updated += 1
+        else:
+            inserted += 1
     
     conn.commit()
     conn.close()

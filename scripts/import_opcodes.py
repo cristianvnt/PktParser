@@ -135,7 +135,7 @@ def ImportToDatabase(Connection, Opcodes, Version):
                 direction = EXCLUDED.direction
         """, (Opc['Value'], Opc['Name'], Opc['Version'], Opc['Direction']))
         
-        if Exists == 1:
+        if Exists:
             Updated += 1
         else:
             Inserted += 1

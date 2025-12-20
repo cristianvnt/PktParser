@@ -1,12 +1,4 @@
 #!/usr/bin/env python3
-"""
-Import opcodes from WPP into PostgreSQL.
-Usage:
-    python3 import_opcodes.py <path-to-Opcodes.cs>
-
-Example:
-    python3 import_opcodes.py ~/WowPacketParser/WowPacketParser/Enums/Version/V11_2_5_63506/Opcodes.cs
-"""
 import re
 import psycopg2
 from pathlib import Path
@@ -38,9 +30,6 @@ if not DB_CONFIG['password']:
     sys.exit(1)
 
 def ParseWppOpcodesFile(FilePath):
-    """
-    Parse WPP opcode file.
-    """
     with open(FilePath, 'r', encoding='utf-8') as F:
         Content = F.read()
 
@@ -144,13 +133,12 @@ def ImportToDatabase(Connection, Opcodes, Version):
     return Inserted, Updated
 
 def Main():
-    print("================================")
     print("Opcode Import MAGIK")
-    print("================================")
     print("")
 
     if len(sys.argv) < 2:
         print("Error: Missing opcode file path")
+        print("Usage: python3 import_opcodes.py <path-to-/VXX_X_X_XXXXX/Opcodes.cs>")
         print("")
         sys.exit(1)
 

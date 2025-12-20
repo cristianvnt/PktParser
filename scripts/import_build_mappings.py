@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
-"""
-Parse WPP's GetOpcodeDefiningBuild and populate build mappings.
-"""
+
 import re
 import psycopg2
 import sys
@@ -91,7 +89,7 @@ def SeedDatabase(mappings):
 
 def Main():
     if len(sys.argv) < 2:
-        print("Usage: python3 import_build_mappings.py <path-to-Opcodes.cs>")
+        print("Usage: python3 import_build_mappings.py <path-to-/Version/Opcodes.cs>")
         sys.exit(1)
     
     wppFile = Path(sys.argv[1])

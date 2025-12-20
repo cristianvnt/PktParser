@@ -4,11 +4,6 @@ DB_NAME="wow_metadata"
 DB_USER="wowparser"
 DB_HOST="localhost"
 
-echo "================================"
-echo "Creating wow_metadata Database"
-echo "================================"
-echo ""
-
 echo "Creating database: $DB_NAME"
 sudo -u postgres psql -c "DROP DATABASE IF EXISTS $DB_NAME;" 2>/dev/null
 sudo -u postgres psql -c "CREATE DATABASE $DB_NAME OWNER $DB_USER;"

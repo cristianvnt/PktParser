@@ -11,21 +11,24 @@ using namespace PktParser::Versions;
 namespace PktParser
 {
     void ParallelProcessor::ProcessBatch(std::vector<Pkt> const& batch, VersionContext& ctx,
-        Db::Database& db, std::atomic<size_t>& parsedCount, std::atomic<size_t>& failedCount)
+        Db::Database& db, std::atomic<size_t>& parsedCount, std::atomic<size_t>& skippedCount, std::atomic<size_t>& failedCount)
     {
         for (Pkt const& pkt : batch)
         {
-            ParserMethod method = ctx.Parser->GetParserMethod(pkt.header.opcode);
-            if (!method)
-                continue;
-            
             char const* opcodeName = ctx.Parser->GetOpcodeName(pkt.header.opcode);
             try
             {
                 BitReader pktReader = pkt.CreateReader();
-                json pktData = method(pktReader);
-                json fullPkt = ctx.Serializer->SerializeFullPacket(pkt.header, opcodeName, ctx.Build, pkt.pktNumber, std::move(pktData));
+                std::optional<json> pktDataOpt = ctx.Parser->ParsePacket(pkt.header.opcode, pktReader);
+                if (!pktDataOpt)
+                {
+                    skippedCount.fetch_add(1, std::memory_order_relaxed);
+                    continue;
+                }
+
+                json fullPkt = ctx.Serializer->SerializeFullPacket(pkt.header, opcodeName, ctx.Build, pkt.pktNumber, std::move(*pktDataOpt));
                 db.StorePacket(std::move(fullPkt));
+
                 parsedCount.fetch_add(1, std::memory_order_relaxed);
             }
             catch (std::exception const& e)
@@ -36,8 +39,8 @@ namespace PktParser
         }
     }
 
-    void ParallelProcessor::WorkerThread(std::queue<std::vector<Reader::Pkt>>& batchQ, std::mutex& qMutex, std::condition_variable& qCV,
-        std::atomic<bool>& done, VersionContext& ctx, Db::Database& db, std::atomic<size_t>& parsedCount, std::atomic<size_t>& failedCount)
+    void ParallelProcessor::WorkerThread(std::queue<std::vector<Reader::Pkt>>& batchQ, std::mutex& qMutex, std::condition_variable& qCV, std::atomic<bool>& done,
+        VersionContext& ctx, Db::Database& db, std::atomic<size_t>& parsedCount, std::atomic<size_t>& skippedCount, std::atomic<size_t>& failedCount)
     {
         static std::atomic<int64_t> lastLogTime{0};
         while (true)
@@ -61,7 +64,7 @@ namespace PktParser
 
             if (!batch.empty())
             {
-                ProcessBatch(batch, ctx, db, parsedCount, failedCount);
+                ProcessBatch(batch, ctx, db, parsedCount, skippedCount, failedCount);
                 auto now = std::chrono::steady_clock::now().time_since_epoch().count();
                 int64_t lastLog = lastLogTime.load(std::memory_order_relaxed);
                 
@@ -98,7 +101,7 @@ namespace PktParser
         workers.reserve(threadCount);
         for (size_t i = 0; i < threadCount; ++i)
             workers.emplace_back(WorkerThread, std::ref(batchQueue), std::ref(queueMutex), std::ref(queueCV), std::ref(done),
-                std::ref(ctx), std::ref(db), std::ref(parsedCount), std::ref(failedCount));
+                std::ref(ctx), std::ref(db), std::ref(parsedCount), std::ref(skippedCount), std::ref(failedCount));
 
         std::vector<Pkt> currentBatch;
         currentBatch.reserve(BATCH_SIZE);
@@ -109,14 +112,7 @@ namespace PktParser
             if (!pktOpt.has_value())
                 break;
 
-			Pkt const& pkt = pktOpt.value();
-            if (!ctx.Parser->GetParserMethod(pkt.header.opcode))
-            {
-                skippedCount.fetch_add(1, std::memory_order_relaxed);
-                continue;
-            }
-
-            currentBatch.push_back(pkt);
+            currentBatch.push_back(std::move(*pktOpt));
 
             if (currentBatch.size() >= BATCH_SIZE)
             {

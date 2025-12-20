@@ -2,9 +2,8 @@
 #include "Parser.h"
 
 #include "Opcodes.h"
-#include "ParserMacros.h"
 #include "Database/OpcodeCache.h"
-
+#include "RegisterHandlers.inl"
 #include "Common/Parsers/SpellHandlers.inl"
 #include "Common/Parsers/AuthHandlers.inl"
 #include "Common/Parsers/WorldStateHandlers.inl"
@@ -15,59 +14,63 @@ using namespace PktParser::Db;
 
 namespace PktParser::Versions::V11_2_5_63506
 {
-	json Parser::ParseAuthChallenge(BitReader& reader)
+    Parser::Parser() : _registry{ this }
     {
-        return AuthHandlers::ParseAuthChallengeDefault(reader, GetSerializer());
+        _registry.Reserve(REGISTRY_RESERVE_SIZE);
+        RegisterAllHandlers(this, _registry);
     }
 
-	json Parser::ParseUpdateWorldState(BitReader& reader)
+    std::optional<json> Parser::ParsePacket(uint32 opcode, BitReader& reader)
     {
-        return WorldStateHandlers::ParseUpdateWorldStateDefault(reader, GetSerializer());
+        return _registry.Dispatch(opcode, reader);
     }
-
-	static void ParseSpellTargetData(BitReader& reader, Structures::SpellTargetData& targetData)
-    {
-        targetData.Flags = reader.ReadUInt32();
-        targetData.Unit = Misc::ReadPackedGuid128(reader);
-        targetData.Item = Misc::ReadPackedGuid128(reader);
-
-        bool hasSrc = reader.ReadBit();
-        bool hasDst = reader.ReadBit();
-        bool hasOrientation = reader.ReadBit();
-        bool hasMapID = reader.ReadBit();
-        uint32 nameLength = reader.ReadBits(7);
-
-        reader.ResetBitReader();
-
-        if (hasSrc)
-            targetData.SrcLocation = SpellHandlers::ReadLocation(reader);
-
-        if (hasDst)
-            targetData.DstLocation = SpellHandlers::ReadLocation(reader);
-
-        if (hasOrientation)
-            targetData.Orientation = reader.ReadFloat();
-
-        if (hasMapID)
-            targetData.MapID = reader.ReadUInt32();
-
-        targetData.Name = reader.ReadWoWString(nameLength);
-    }
-
-	json Parser::ParseSpellGo(BitReader& reader)
-	{
-		return SpellHandlers::ParseSpellGoDefault(reader, GetSerializer(), ParseSpellTargetData);
-	}
 
     char const* Parser::GetOpcodeName(uint32 opcode) const
     {
         return OpcodeCache::Instance().GetOpcodeName(opcode);
     }
-}
 
-IMPLEMENT_SERIALIZER(V11_2_5_63506, V11_2_5_63506::JsonSerializer);
-BEGIN_PARSER_HANDLER(V11_2_5_63506)
-	REGISTER_HANDLER(SMSG_AUTH_CHALLENGE, ParseAuthChallenge)
-	REGISTER_HANDLER(SMSG_SPELL_GO, ParseSpellGo)
-	REGISTER_HANDLER(SMSG_UPDATE_WORLD_STATE, ParseUpdateWorldState)
-END_PARSER_HANDLER()
+	json Parser::ParseAuthChallenge(BitReader& reader)
+    {
+        return AuthHandlers::ParseAuthChallengeDefault(reader, &_serializer);
+    }
+
+	json Parser::ParseUpdateWorldState(BitReader& reader)
+    {
+        return WorldStateHandlers::ParseUpdateWorldStateDefault(reader, &_serializer);
+    }
+
+	json Parser::ParseSpellGo(BitReader& reader)
+	{
+        auto ParseSpellTargetData = [](BitReader& reader, Structures::SpellTargetData& targetData)
+        {
+            targetData.Flags = reader.ReadUInt32();
+            targetData.Unit = Misc::ReadPackedGuid128(reader);
+            targetData.Item = Misc::ReadPackedGuid128(reader);
+
+            bool hasSrc = reader.ReadBit();
+            bool hasDst = reader.ReadBit();
+            bool hasOrientation = reader.ReadBit();
+            bool hasMapID = reader.ReadBit();
+            uint32 nameLength = reader.ReadBits(7);
+
+            reader.ResetBitReader();
+
+            if (hasSrc)
+                targetData.SrcLocation = SpellHandlers::ReadLocation(reader);
+
+            if (hasDst)
+                targetData.DstLocation = SpellHandlers::ReadLocation(reader);
+
+            if (hasOrientation)
+                targetData.Orientation = reader.ReadFloat();
+
+            if (hasMapID)
+                targetData.MapID = reader.ReadUInt32();
+
+            targetData.Name = reader.ReadWoWString(nameLength);
+        };
+
+		return SpellHandlers::ParseSpellGoDefault(reader, &_serializer, ParseSpellTargetData);
+	}
+}

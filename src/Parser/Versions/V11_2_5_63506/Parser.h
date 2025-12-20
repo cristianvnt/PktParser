@@ -1,26 +1,31 @@
 #ifndef PARSER_V11_2_5_64502_H
 #define PARSER_V11_2_5_64502_H
 
+#include <unordered_map>
+
 #include "IVersionParser.h"
 #include "JsonSerializer.h"
-#include "Structures/SpellTargetData.h"
-#include "Structures/TargetLocation.h"
+#include "Common/OpcodeRegistry.h"
 
 namespace PktParser::Versions::V11_2_5_63506
 {
 	using BitReader = PktParser::Reader::BitReader;
 
-	class Parser : public IVersionParser
+	class Parser final : public IVersionParser
 	{
+	private:
+		JsonSerializer _serializer;
+		Common::OpcodeRegistry<Parser> _registry;
+
 	public:
-		static json ParseAuthChallenge(BitReader& reader);
-        static json ParseUpdateWorldState(BitReader& reader);
-        static json ParseSpellGo(BitReader& reader);
+		Parser();
 		
-		static JsonSerializer* GetSerializer();
-		ParserMethod GetParserMethod(uint32 opcode) const override;
+		std::optional<json> ParsePacket(uint32 opcode, BitReader& reader) override;
         char const* GetOpcodeName(uint32 opcode) const override;
-        uint32 GetBuild() const override { return 64502; }
+
+		json ParseAuthChallenge(BitReader& reader);
+		json ParseUpdateWorldState(BitReader& reader);
+        json ParseSpellGo(BitReader& reader);
 	};
 }
 

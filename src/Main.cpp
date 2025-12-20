@@ -91,20 +91,21 @@ int main(int argc, char* argv[])
 			if (!pktOpt.has_value())
 				break;
 
-			Pkt const& pkt = pktOpt.value();
-			ParserMethod method = ctx.Parser->GetParserMethod(pkt.header.opcode);
-            if (!method)
-			{
-				skippedCount++;
-				continue;
-			}
-			
+			Pkt const& pkt = *pktOpt;
 			char const* opcodeName = ctx.Parser->GetOpcodeName(pkt.header.opcode);
+			
 			try
 			{
-				BitReader packetReader = pkt.CreateReader();
-				json packetData = method(packetReader);
-				json fullPacket = ctx.Serializer->SerializeFullPacket(pkt.header, opcodeName, build, pkt.pktNumber, std::move(packetData));
+				BitReader pktReader = pkt.CreateReader();
+				std::optional<json> pktDataOpt = ctx.Parser->ParsePacket(pkt.header.opcode, pktReader);
+				if (!pktDataOpt)
+				{
+					skippedCount++;
+					continue;
+				}
+
+				json fullPacket = ctx.Serializer->SerializeFullPacket(pkt.header, opcodeName, build, pkt.pktNumber, std::move(*pktDataOpt));
+
 				db.StorePacket(std::move(fullPacket));
 				parsedCount++;
 

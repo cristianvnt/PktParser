@@ -1,7 +1,4 @@
-DROP TABLE IF EXISTS opcodes CASCADE;
-DROP TABLE IF EXISTS builds CASCADE;
-
-CREATE TABLE builds
+CREATE TABLE IF NOT EXISTS builds
 (
     build_number INTEGER PRIMARY KEY,
     patch_version VARCHAR(20) NOT NULL,
@@ -13,7 +10,7 @@ CREATE TABLE builds
 CREATE INDEX IF NOT EXISTS idx_builds_patch ON builds(patch_version);
 CREATE INDEX IF NOT EXISTS idx_builds_parser ON builds(parser_version);
 
-CREATE TABLE opcodes
+CREATE TABLE IF NOT EXISTS opcodes
 (
     id SERIAL PRIMARY KEY,
     opcode_value INTEGER NOT NULL,

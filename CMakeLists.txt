@@ -24,12 +24,6 @@ endif()
 
 include(FetchContent)
 
-FetchContent_Declare(fmt
-	GIT_REPOSITORY https://github.com/fmtlib/fmt.git
-	GIT_TAG 12.1.0
-)
-FetchContent_MakeAvailable(fmt)
-
 FetchContent_Declare(json
 	URL https://github.com/nlohmann/json/releases/download/v3.12.0/json.tar.xz
 )
@@ -43,6 +37,8 @@ FetchContent_Declare(libpqxx
     GIT_TAG 7.10.4
 )
 FetchContent_MakeAvailable(libpqxx)
+
+find_package(fmt REQUIRED)
 
 find_library(CASSANDRA_LIBRARY NAMES cassandra REQUIRED)
 find_path(CASSANDRA_INCLUDE_DIR NAMES cassandra.h REQUIRED)
@@ -88,3 +84,9 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 	${ZLIB_LIBRARIES}
 	Threads::Threads
 )
+
+message(STATUS "Using system fmt: ${fmt_DIR}")
+message(STATUS "Using FetchContent json: 3.12.0")
+message(STATUS "Using FetchContent libpqxx")
+message(STATUS "Found Cassandra include: ${CASSANDRA_INCLUDE_DIR}")
+message(STATUS "Found Cassandra library: ${CASSANDRA_LIBRARY}")

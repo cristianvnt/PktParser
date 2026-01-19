@@ -21,7 +21,7 @@ namespace PktParser::Db
         cass_cluster_set_num_threads_io(_cluster, 8);
 
         _session = cass_session_new();
-        CassFuture* connectFuture = cass_session_connect(_session, _cluster);
+        CassFuture* connectFuture = cass_session_connect_keyspace(_session, _cluster, "wow_packets");
 
         if (cass_future_error_code(connectFuture) != CASS_OK)
         {
@@ -35,7 +35,6 @@ namespace PktParser::Db
         cass_future_free(connectFuture);
         LOG("The bluetooth device has connected successfully");
         
-        CreateKeyspaceAndTable();
         PrepareStmts();
     }
 
@@ -56,58 +55,6 @@ namespace PktParser::Db
         cass_cluster_free(_cluster);
 
         LOG("Database shutdown complete: {} inserted, {} failed", _totalInserted.load(), _totalFailed.load());
-    }
-
-    void Database::CreateKeyspaceAndTable()
-    {
-        char const* createKeyspace = "CREATE KEYSPACE IF NOT EXISTS wow_packets "
-            "WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1}";
-
-        CassStatement* stmt = cass_statement_new(createKeyspace, 0);
-        CassFuture* future = cass_session_execute(_session, stmt);
-        cass_future_wait(future);
-
-        if (cass_future_error_code(future) != CASS_OK)
-        {
-            char const* msg;
-            size_t msgLen;
-            cass_future_error_message(future, &msg, &msgLen);
-            throw ParseException{ "Could not create keyspace: " + std::string(msg, msgLen) };
-        }
-
-        cass_future_free(future);
-        cass_statement_free(stmt);
-
-        char const* createTable =
-            "CREATE TABLE IF NOT EXISTS wow_packets.packets("
-                "packet_number int PRIMARY KEY,"
-                "direction text,"
-                "packet_name text,"
-                "packet_len int,"
-                "opcode text,"
-                "timestamp text,"
-                "build int,"
-                "pkt_json text"
-            ")";
-
-        stmt = cass_statement_new(createTable, 0);
-        future = cass_session_execute(_session, stmt);
-        cass_future_wait(future);
-
-        if (cass_future_error_code(future) != CASS_OK)
-        {
-            const char* msg;
-            size_t msgLen;
-            cass_future_error_message(future, &msg, &msgLen);
-            cass_future_free(future);
-            cass_statement_free(stmt);
-            throw ParseException{ "Could not create >packets< table: " + std::string(msg, msgLen) };
-        }
-        
-        cass_future_free(future);
-        cass_statement_free(stmt);
-
-        LOG("Keyspace and tables ready");
     }
 
     void Database::PrepareStmts()

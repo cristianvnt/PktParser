@@ -27,7 +27,6 @@ namespace PktParser::Db
 		std::atomic<size_t> _totalFailed{0};
 		std::atomic<size_t> _pendingCount{0};
 		
-		void CreateKeyspaceAndTable();
 		void PrepareStmts();
 		static void InsertCallback(CassFuture* future, void* data);
 

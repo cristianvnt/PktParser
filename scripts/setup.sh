@@ -8,10 +8,11 @@ fi
 
 echo "Installing build tools..."
 sudo apt-get update
-sudo apt-get install -y build-essential cmake git wget curl
-
-gcc --version
-g++ --version
+sudo apt-get install -y build-essential gcc-13 g++-13 cmake git wget curl
+sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-13 110
+sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-13 110
+sudo update-alternatives --auto gcc
+sudo update-alternatives --auto g++
 
 echo "Installing C++ libraries..."
 sudo apt-get install -y libfmt-dev libssl-dev zlib1g-dev libuv1-dev
@@ -44,6 +45,12 @@ if [ ! -d "/tmp/cassandra-cpp-driver" ]; then
 fi
 
 echo "Installing Python dependencies..."
-sudo apt-get install -y python3-pip python3-psycopg2 python3-dotenv
+sudo apt-get install -y pipx python3-pip python3-psycopg2 python3-dotenv
+pipx ensurepath
+
+echo "Installing cqlsh for Python 3.12..."
+pipx install cqlsh
+
+export PATH="$HOME/.local/bin:$PATH"
 
 echo "Setup complete"

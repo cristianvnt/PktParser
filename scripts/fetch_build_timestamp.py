@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
-import re
-import os
 import requests
 import psycopg2
 import sys
 from pathlib import Path
 from datetime import datetime
 from dotenv import load_dotenv
+import os
 
 SCRIPT_DIR = Path(__file__).parent
 PROJECT_ROOT = SCRIPT_DIR.parent
+
 load_dotenv(PROJECT_ROOT / '.env')
 
 DB_CONFIG = \
@@ -21,51 +21,51 @@ DB_CONFIG = \
     'password': os.getenv('POSTGRES_PASSWORD')
 }
 
-def FetchBuildDirectories():
-    url = "https://api.github.com/repos/mdX7/ngdp_data/contents/EU/wow"
+GITHUB_API_BASE = "https://api.github.com/repos/mdX7/ngdp_data"
+
+def fetch_build_list() -> list[int]:
+    # fetch list of build numbers from GitHub repository
+    url = f"{GITHUB_API_BASE}/contents/EU/wow"
     
     try:
         response = requests.get(url, timeout=30)
         
-        print(f"  Status: {response.status_code}")
-        
         if response.status_code == 403:
-            print("  Too many requests :( - wait 1 hour")
+            print("Error: GitHub API rate limit exceeded")
+            print("Wait 1 hour or use GitHub token")
             return []
         
         if response.status_code != 200:
-            print(f"  Error: {response.status_code}")
+            print(f"Error: GitHub API returned {response.status_code}")
             return []
         
         contents = response.json()
         
         if not isinstance(contents, list):
-            print(f"  Error: Unexpected response type")
+            print("Error: Unexpected API response format")
             return []
         
+        # extract build numbers from directory names
         builds = []
-        
         for item in contents:
             if item.get('type') == 'dir':
                 name = item.get('name', '')
                 if name.isdigit():
-                    buildNum = int(name)
-                    if 1000 <= buildNum <= 99999:
-                        builds.append(buildNum)
+                    build_num = int(name)
+                    if 1000 <= build_num <= 99999:  # valid build number range
+                        builds.append(build_num)
         
-        buildList = sorted(builds, reverse=True)
-        print(f"  Found {len(buildList)} builds")
-        
-        return buildList
+        return sorted(builds, reverse=True)  # newest first
     
-    except Exception as e:
-        print(f"  Exception: {e}")
+    except requests.RequestException as e:
+        print(f"Error: Network request failed - {e}")
         return []
 
-def FetchBuildDeployDate(buildNumber):
-    url = f"https://api.github.com/repos/mdX7/ngdp_data/commits"
+def fetch_deploy_timestamp(build_number: int) -> datetime | None:
+    # fetch deploy timestamp for a build from commit history
+    url = f"{GITHUB_API_BASE}/commits"
     params = {
-        'path': f'EU/wow/{buildNumber}',
+        'path': f'EU/wow/{build_number}',
         'per_page': 1
     }
     
@@ -80,33 +80,40 @@ def FetchBuildDeployDate(buildNumber):
         if not commits or len(commits) == 0:
             return None
         
-        timestamp = commits[0]['commit']['committer']['date']
-        return datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+        # parse ISO timestamp
+        timestamp_str = commits[0]['commit']['committer']['date']
+        return datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
     
-    except Exception as e:
+    except Exception:
         return None
 
-def UpdateDeployTimestamps(builds):
+def update_database(builds_with_timestamps: list[dict]) -> tuple[int, int]:
+    # update database with deploy timestamps
     conn = psycopg2.connect(**DB_CONFIG)
     cursor = conn.cursor()
     
     updated = 0
     skipped = 0
+    skipped_builds = []
     
-    for build in builds:
-        cursor.execute("SELECT 1 FROM builds WHERE build_number = %s", (build['build'],))
+    for item in builds_with_timestamps:
+        build_num = item['build']
+        deploy_time = item['timestamp']
+        
+        # check if build exists in database
+        cursor.execute("SELECT 1 FROM builds WHERE build_number = %s", (build_num,))
         
         if cursor.fetchone() is None:
-            print(f"Build {build['build']} skipped")
             skipped += 1
+            skipped_builds.append(build_num)  # add to list
             continue
         
-        cursor.execute(
-        """
+        # update only if deploy_timestamp is NULL
+        cursor.execute("""
             UPDATE builds 
             SET deploy_timestamp = %s 
             WHERE build_number = %s AND deploy_timestamp IS NULL
-        """, (build['deployed'], build['build']))
+        """, (deploy_time, build_num))
         
         if cursor.rowcount > 0:
             updated += 1
@@ -114,63 +121,79 @@ def UpdateDeployTimestamps(builds):
     conn.commit()
     conn.close()
     
-    return updated, skipped
+    return updated, skipped, skipped_builds
 
-def Main():
-    print("Source: mdX7/ngdp_data/EU/wow")
-    print("")
+def main():
+    print("Fetching WoW build deploy timestamps")
+    print(f"Source: {GITHUB_API_BASE}")
+    print()
     
-    startIdx = 0
-    endIdx = 10
+    # parse command line arguments for range
+    start_idx = 0
+    end_idx = 10  # default: fetch 10 most recent builds
     
     if len(sys.argv) >= 3:
-        startIdx = int(sys.argv[1])
-        endIdx = int(sys.argv[2])
+        start_idx = int(sys.argv[1])
+        end_idx = int(sys.argv[2])
     
-    print("Fetching build list...")
-    buildNumbers = FetchBuildDirectories()
+    print("Fetching build list from GitHub...")
+    all_builds = fetch_build_list()
     
-    if not buildNumbers:
-        print("  No builds found or rate limited")
+    if not all_builds:
+        print("Failed to fetch build list")
         sys.exit(1)
     
-    print(f"  Total: {len(buildNumbers)} builds")
-    print("")
+    print(f"Found {len(all_builds)} total builds")
+    print()
     
-    recentBuilds = buildNumbers[startIdx:endIdx]
+    # select range
+    selected_builds = all_builds[start_idx:end_idx]
     
-    if not recentBuilds:
-        print(f"  No builds in range [{startIdx}:{endIdx}]")
+    if not selected_builds:
+        print(f"No builds in range [{start_idx}:{end_idx}]")
         sys.exit(0)
     
-    print(f"Fetching timestamps for builds {startIdx}-{endIdx} ({len(recentBuilds)} builds)...")
-    print("")
+    print(f"Fetching timestamps for {len(selected_builds)} builds (range [{start_idx}:{end_idx}])...")
+    print()
     
-    buildsWithDates = []
+    builds_with_timestamps = []
     
-    for i, buildNum in enumerate(recentBuilds, 1):
-        print(f"  [{i}/{len(recentBuilds)}] Build {buildNum}...", end=" ", flush=True)
+    for i, build_num in enumerate(selected_builds, 1):
+        print(f"  [{i}/{len(selected_builds)}] Build {build_num}... ", end="", flush=True)
         
-        deployDate = FetchBuildDeployDate(buildNum)
+        deploy_time = fetch_deploy_timestamp(build_num)
         
-        if deployDate:
-            buildsWithDates.append({'build': buildNum, 'deployed': deployDate})
-            print(f"{deployDate.strftime('%Y-%m-%d')}")
+        if deploy_time:
+            builds_with_timestamps.append({
+                'build': build_num,
+                'timestamp': deploy_time
+            })
+            print(f"{deploy_time.strftime('%Y-%m-%d %H:%M:%S')}")
         else:
-            print("Failed")
+            print("failed")
     
-    print(f"Successfully fetched {len(buildsWithDates)} timestamps")
+    print()
+    print(f"Successfully fetched {len(builds_with_timestamps)}/{len(selected_builds)} timestamps")
     
-    if not buildsWithDates:
+    if not builds_with_timestamps:
+        print("No timestamps to update")
         sys.exit(0)
     
+    print()
     print("Updating database...")
-    updated, skipped = UpdateDeployTimestamps(buildsWithDates)
     
-    print(f"  Updated: {updated}")
-    print(f"  Skipped (not in DB): {skipped}")
-    print("")
-    print("Complete")
+    try:
+        updated, skipped, skipped_builds = update_database(builds_with_timestamps)
+        print(f"  Updated: {updated}")
+        print(f"  Skipped (not in DB): {skipped}")
+        if skipped_builds:
+            print(f"  Skipped builds: {', '.join(map(str, skipped_builds))}")
+        print()
+        print("Complete")
+    except psycopg2.Error as e:
+        print(f"Error: Database update failed")
+        print(f"Details: {e}")
+        sys.exit(1)
 
 if __name__ == "__main__":
-    Main()
+    main()

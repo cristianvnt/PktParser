@@ -50,7 +50,6 @@ pipx ensurepath
 
 echo "Installing cqlsh for Python 3.12..."
 pipx install cqlsh
-
 export PATH="$HOME/.local/bin:$PATH"
 
 echo "Setup complete"

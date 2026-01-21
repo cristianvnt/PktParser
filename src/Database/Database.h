@@ -19,6 +19,27 @@ namespace PktParser::Db
 	class Database
 	{
 	private:
+		struct InsertData
+		{
+			int packetNumber;
+			std::string direction;
+			std::string packetName;
+			int packetLen;
+			std::string opcode;
+			std::string timestamp;
+			int build;
+			std::string pktJson;
+
+			Database* db;
+			InsertData* next;
+			int retryCount{};
+		};
+
+		std::atomic<InsertData*> _poolHead;
+
+		InsertData* AcquireInsertData();
+    	void ReleaseInsertData(InsertData* data);
+
 		CassCluster* _cluster;
 		CassSession* _session;
 		CassPrepared* _preparedInsert;

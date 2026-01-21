@@ -3,6 +3,12 @@
 !.env.example
 *.data
 
+# profiling logs
+perf.data
+perf.data.old
+perf_*.txt
+*.perf
+
 # build dirs
 build/
 cmake-build-*/

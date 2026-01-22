@@ -12,5 +12,5 @@ CREATE TABLE IF NOT EXISTS wow_packets.packets (
     opcode text,
     timestamp text,
     pkt_json blob,
-    PRIMARY KEY ((build), file_id, packet_number)
-) WITH CLUSTERING ORDER BY (file_id ASC, packet_number ASC);
+    PRIMARY KEY ((build, file_id), packet_number)
+) WITH CLUSTERING ORDER BY (packet_number ASC);

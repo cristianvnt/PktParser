@@ -46,6 +46,7 @@ namespace PktParser::Db
 
 		CallbackContext* context;
 
+		CassFuture* future;
 		InsertData* next;
 		int retryCount{};
 	};
@@ -69,6 +70,7 @@ namespace PktParser::Db
 		void PrepareStmts();
 
 		static void InsertCallback(CassFuture* future, void* data);
+		static void BindInsertStatement(CassStatement* stmt, InsertData const* data);
 
 	public:
 		Database();

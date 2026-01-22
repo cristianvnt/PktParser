@@ -87,7 +87,10 @@ namespace PktParser::Db
             InsertData* next = head->next;
 
             if (_poolHead.compare_exchange_weak(head, next, std::memory_order_release, std::memory_order_acquire))
+            {
+                head->retryCount = 0;
                 return head;
+            }
         }
 
         return new InsertData();
@@ -149,21 +152,12 @@ namespace PktParser::Db
         }
 
         CassStatement* stmt = cass_prepared_bind(_preparedInsert);
-        cass_statement_bind_int32(stmt, 0, data->build);
-        cass_statement_bind_uuid(stmt, 1, data->fileId);
-        cass_statement_bind_int32(stmt, 2, data->packetNumber);
-        cass_statement_bind_string(stmt, 3, data->sourceFile.c_str());
-        cass_statement_bind_string(stmt, 4, data->direction.c_str());
-        cass_statement_bind_string(stmt, 5, data->packetName.c_str());
-        cass_statement_bind_int32(stmt, 6, data->packetLen);
-        cass_statement_bind_string(stmt, 7, data->opcode.c_str());
-        cass_statement_bind_string(stmt, 8, data->timestamp.c_str());
-        cass_statement_bind_bytes(stmt, 9, reinterpret_cast<const cass_byte_t*>(data->pktJson.data()), data->pktJson.size());
+        BindInsertStatement(stmt, data);
 
         CassFuture* future = cass_session_execute(_session, stmt);
+        data->future = future;
         cass_future_set_callback(future, InsertCallback, data);
 
-        cass_future_free(future);
         cass_statement_free(stmt);
     }
 
@@ -177,6 +171,8 @@ namespace PktParser::Db
         {
             ctx->totalInserted->fetch_add(1, std::memory_order_relaxed);
             ctx->pendingCount->fetch_sub(1, std::memory_order_relaxed);
+
+            cass_future_free(insertData->future);
             ctx->ReleaseToPool(insertData);
             return;
         }
@@ -190,23 +186,16 @@ namespace PktParser::Db
 
             std::this_thread::sleep_for(std::chrono::milliseconds(500 * insertData->retryCount));
 
+            cass_future_free(insertData->future);
+
             CassStatement* stmt = cass_prepared_bind(ctx->preparedStmt);
-            cass_statement_bind_int32(stmt, 0, insertData->build);
-            cass_statement_bind_uuid(stmt, 1, insertData->fileId);
-            cass_statement_bind_int32(stmt, 2, insertData->packetNumber);
-            cass_statement_bind_string(stmt, 3, insertData->sourceFile.c_str());
-            cass_statement_bind_string(stmt, 4, insertData->direction.c_str());
-            cass_statement_bind_string(stmt, 5, insertData->packetName.c_str());
-            cass_statement_bind_int32(stmt, 6, insertData->packetLen);
-            cass_statement_bind_string(stmt, 7, insertData->opcode.c_str());
-            cass_statement_bind_string(stmt, 8, insertData->timestamp.c_str());
-            cass_statement_bind_bytes(stmt, 9, reinterpret_cast<const cass_byte_t*>(insertData->pktJson.data()), insertData->pktJson.size());
+            BindInsertStatement(stmt, insertData);
 
             // retry
             CassFuture* retryFuture = cass_session_execute(ctx->session, stmt);
+            insertData->future = retryFuture;
             cass_future_set_callback(retryFuture, InsertCallback, insertData);
             
-            cass_future_free(retryFuture);
             cass_statement_free(stmt);
             return;
         }
@@ -217,12 +206,28 @@ namespace PktParser::Db
         // total failure
         ctx->totalFailed->fetch_add(1, std::memory_order_relaxed);
         ctx->pendingCount->fetch_sub(1, std::memory_order_relaxed);
+
+        cass_future_free(insertData->future);
         ctx->ReleaseToPool(insertData);
 
         const char* msg;
         size_t msgLen;
         cass_future_error_message(future, &msg, &msgLen);
         LOG("INSERT PERMANENTLY FAILED [Packet {}] after {} attempts: {}", failedPacketNumber, attemptCount, cass_error_desc(rc));
+    }
+
+    void Database::BindInsertStatement(CassStatement* stmt, InsertData const* data)
+    {
+        cass_statement_bind_int32(stmt, 0, data->build);
+        cass_statement_bind_uuid(stmt, 1, data->fileId);
+        cass_statement_bind_int32(stmt, 2, data->packetNumber);
+        cass_statement_bind_string(stmt, 3, data->sourceFile.c_str());
+        cass_statement_bind_string(stmt, 4, data->direction.c_str());
+        cass_statement_bind_string(stmt, 5, data->packetName.c_str());
+        cass_statement_bind_int32(stmt, 6, data->packetLen);
+        cass_statement_bind_string(stmt, 7, data->opcode.c_str());
+        cass_statement_bind_string(stmt, 8, data->timestamp.c_str());
+        cass_statement_bind_bytes(stmt, 9, reinterpret_cast<const cass_byte_t*>(data->pktJson.data()), data->pktJson.size());
     }
 
     void Database::Flush()

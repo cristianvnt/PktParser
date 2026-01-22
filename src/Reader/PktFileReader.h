@@ -47,6 +47,7 @@ namespace PktParser::Reader
 	{
 	private:
 		std::ifstream _file;
+		std::string _filepath;
 		PktFileHeader _fileHeader;
 		uint32 _pktNumber;
 
@@ -61,6 +62,7 @@ namespace PktParser::Reader
 		uint32 GetBuildVersion() const { return _fileHeader.clientBuild; }
 		int GetPacketNumber() const { return _pktNumber; }
 		bool IsOpen() const { return _file.is_open(); }
+		std::string const& GetFilePath() const { return _filepath; }
 
 	private:
 		PktHeader ParsePacketHeader();

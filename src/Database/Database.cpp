@@ -9,8 +9,9 @@ namespace PktParser::Db
 {
 
     Database::Database()
-        :_poolHead{ nullptr }, _cluster{ nullptr }, _session{ nullptr }, _preparedInsert{ nullptr }
+        :_poolHead{ nullptr }, _cluster{ nullptr }, _session{ nullptr }, _preparedInsert{ nullptr }, _uuidGen{ nullptr }
     {
+        _uuidGen = cass_uuid_gen_new();
         _cluster = cass_cluster_new();
 
         std::string cassandraHost = Config::GetCassandraHost();
@@ -38,6 +39,13 @@ namespace PktParser::Db
         LOG("The bluetooth device has connected successfully");
         
         PrepareStmts();
+
+        _callbackContext.totalInserted = &_totalInserted;
+        _callbackContext.totalFailed = &_totalFailed;
+        _callbackContext.pendingCount = &_pendingCount;
+        _callbackContext.poolHead = &_poolHead;
+        _callbackContext.preparedStmt = _preparedInsert;
+        _callbackContext.session = _session;
     }
 
     Database::~Database()
@@ -48,6 +56,9 @@ namespace PktParser::Db
 
         if (_preparedInsert)
             cass_prepared_free(_preparedInsert);
+            
+        if (_uuidGen)
+            cass_uuid_gen_free(_uuidGen);
 
         CassFuture* closeFuture = cass_session_close(_session);
         cass_future_wait(closeFuture);
@@ -67,7 +78,7 @@ namespace PktParser::Db
         LOG("Database shutdown complete: {} inserted, {} failed", _totalInserted.load(), _totalFailed.load());
     }
 
-    Database::InsertData *Database::AcquireInsertData()
+    InsertData *Database::AcquireInsertData()
     {
         InsertData* head = _poolHead.load(std::memory_order_acquire);
 
@@ -82,21 +93,12 @@ namespace PktParser::Db
         return new InsertData();
     }
 
-    void Database::ReleaseInsertData(InsertData *data)
-    {
-        InsertData* head = _poolHead.load(std::memory_order_acquire);
-
-        do
-        {
-            data->next = head;
-        } while (!_poolHead.compare_exchange_weak(head, data, std::memory_order_release, std::memory_order_acquire));
-    }
-
     void Database::PrepareStmts()
     {
         char const* insertQuery =
-            "INSERT INTO wow_packets.packets (packet_number, direction, packet_name, packet_len, opcode, timestamp, build, pkt_json) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+            "INSERT INTO wow_packets.packets "
+            "(build, file_id, packet_number, source_file, direction, packet_name, packet_len, opcode, timestamp, pkt_json) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         CassFuture* prepareFuture = cass_session_prepare(_session, insertQuery);
         cass_future_wait(prepareFuture);
@@ -114,7 +116,7 @@ namespace PktParser::Db
         cass_future_free(prepareFuture);
     }
 
-    void Database::StorePacket(json&& pkt)
+    void Database::StorePacket(json&& pkt, std::string const& srcFile, CassUuid const& fileId)
     {
         while (_pendingCount.load(std::memory_order_relaxed) > 50000)
             std::this_thread::sleep_for(std::chrono::microseconds(100));
@@ -123,26 +125,40 @@ namespace PktParser::Db
 
         InsertData* data = AcquireInsertData();
 
-        auto const& header = pkt["Header"];
-        data->packetNumber = pkt["Number"].get<int>();
-        data->direction = header["Direction"].get<std::string>();
-        data->packetName = header["PacketName"].get<std::string>();
-        data->packetLen = header["Length"].get<int>();
-        data->opcode = header["Opcode"].get<std::string>();
-        data->timestamp = header["Timestamp"].get<std::string>();
-        data->build = header["Build"].get<int>();
-        data->pktJson = std::move(pkt).dump();
-        data->db = this;
+        try
+        {
+            auto const& header = pkt["Header"];
+            data->build = header["Build"].get<int>();
+            data->fileId = fileId;
+            data->packetNumber = pkt["Number"].get<int>();
+            data->sourceFile = srcFile;
+            data->direction = header["Direction"].get<std::string>();
+            data->packetName = header["PacketName"].get<std::string>();
+            data->packetLen = header["Length"].get<int>();
+            data->opcode = header["Opcode"].get<std::string>();
+            data->timestamp = header["Timestamp"].get<std::string>();
+            data->pktJson = std::move(pkt).dump();
+            data->context = &_callbackContext;
+        }
+        catch (std::exception const& e)
+        {
+            LOG("Failed to prepare packet {}: {}", data->packetNumber, e.what());
+            _callbackContext.ReleaseToPool(data);
+            _pendingCount.fetch_sub(1, std::memory_order_relaxed);
+            return;
+        }
 
         CassStatement* stmt = cass_prepared_bind(_preparedInsert);
-        cass_statement_bind_int32(stmt, 0, data->packetNumber);
-        cass_statement_bind_string(stmt, 1, data->direction.c_str());
-        cass_statement_bind_string(stmt, 2, data->packetName.c_str());
-        cass_statement_bind_int32(stmt, 3, data->packetLen);
-        cass_statement_bind_string(stmt, 4, data->opcode.c_str());
-        cass_statement_bind_string(stmt, 5, data->timestamp.c_str());
-        cass_statement_bind_int32(stmt, 6, data->build);
-        cass_statement_bind_string(stmt, 7, data->pktJson.c_str());
+        cass_statement_bind_int32(stmt, 0, data->build);
+        cass_statement_bind_uuid(stmt, 1, data->fileId);
+        cass_statement_bind_int32(stmt, 2, data->packetNumber);
+        cass_statement_bind_string(stmt, 3, data->sourceFile.c_str());
+        cass_statement_bind_string(stmt, 4, data->direction.c_str());
+        cass_statement_bind_string(stmt, 5, data->packetName.c_str());
+        cass_statement_bind_int32(stmt, 6, data->packetLen);
+        cass_statement_bind_string(stmt, 7, data->opcode.c_str());
+        cass_statement_bind_string(stmt, 8, data->timestamp.c_str());
+        cass_statement_bind_bytes(stmt, 9, reinterpret_cast<const cass_byte_t*>(data->pktJson.data()), data->pktJson.size());
 
         CassFuture* future = cass_session_execute(_session, stmt);
         cass_future_set_callback(future, InsertCallback, data);
@@ -154,14 +170,14 @@ namespace PktParser::Db
     void Database::InsertCallback(CassFuture* future, void* data)
     {
         InsertData* insertData = static_cast<InsertData*>(data);
-        Database* db = insertData->db;
+        CallbackContext* ctx = insertData->context;
         CassError rc = cass_future_error_code(future);
 
         if (rc == CASS_OK)
         {
-            db->_totalInserted.fetch_add(1, std::memory_order_relaxed);
-            db->_pendingCount.fetch_sub(1, std::memory_order_relaxed);
-            db->ReleaseInsertData(insertData);
+            ctx->totalInserted->fetch_add(1, std::memory_order_relaxed);
+            ctx->pendingCount->fetch_sub(1, std::memory_order_relaxed);
+            ctx->ReleaseToPool(insertData);
             return;
         }
 
@@ -174,18 +190,20 @@ namespace PktParser::Db
 
             std::this_thread::sleep_for(std::chrono::milliseconds(500 * insertData->retryCount));
 
-            CassStatement* stmt = cass_prepared_bind(db->_preparedInsert);
-            cass_statement_bind_int32(stmt, 0, insertData->packetNumber);
-            cass_statement_bind_string(stmt, 1, insertData->direction.c_str());
-            cass_statement_bind_string(stmt, 2, insertData->packetName.c_str());
-            cass_statement_bind_int32(stmt, 3, insertData->packetLen);
-            cass_statement_bind_string(stmt, 4, insertData->opcode.c_str());
-            cass_statement_bind_string(stmt, 5, insertData->timestamp.c_str());
-            cass_statement_bind_int32(stmt, 6, insertData->build);
-            cass_statement_bind_string(stmt, 7, insertData->pktJson.c_str());
+            CassStatement* stmt = cass_prepared_bind(ctx->preparedStmt);
+            cass_statement_bind_int32(stmt, 0, insertData->build);
+            cass_statement_bind_uuid(stmt, 1, insertData->fileId);
+            cass_statement_bind_int32(stmt, 2, insertData->packetNumber);
+            cass_statement_bind_string(stmt, 3, insertData->sourceFile.c_str());
+            cass_statement_bind_string(stmt, 4, insertData->direction.c_str());
+            cass_statement_bind_string(stmt, 5, insertData->packetName.c_str());
+            cass_statement_bind_int32(stmt, 6, insertData->packetLen);
+            cass_statement_bind_string(stmt, 7, insertData->opcode.c_str());
+            cass_statement_bind_string(stmt, 8, insertData->timestamp.c_str());
+            cass_statement_bind_bytes(stmt, 9, reinterpret_cast<const cass_byte_t*>(insertData->pktJson.data()), insertData->pktJson.size());
 
             // retry
-            CassFuture* retryFuture = cass_session_execute(db->_session, stmt);
+            CassFuture* retryFuture = cass_session_execute(ctx->session, stmt);
             cass_future_set_callback(retryFuture, InsertCallback, insertData);
             
             cass_future_free(retryFuture);
@@ -193,16 +211,18 @@ namespace PktParser::Db
             return;
         }
 
+        int failedPacketNumber = insertData->packetNumber;
+        int attemptCount = insertData->retryCount + 1;
+
         // total failure
-        db->_totalFailed.fetch_add(1, std::memory_order_relaxed);
-        db->_pendingCount.fetch_sub(1, std::memory_order_relaxed);
-        db->ReleaseInsertData(insertData);
+        ctx->totalFailed->fetch_add(1, std::memory_order_relaxed);
+        ctx->pendingCount->fetch_sub(1, std::memory_order_relaxed);
+        ctx->ReleaseToPool(insertData);
 
         const char* msg;
         size_t msgLen;
         cass_future_error_message(future, &msg, &msgLen);
-        LOG("INSERT PERMANENTLY FAILED [Packet {}] after {} attempts: {} - {}",
-            insertData->packetNumber, insertData->retryCount + 1, cass_error_desc(rc), std::string(msg, msgLen));
+        LOG("INSERT PERMANENTLY FAILED [Packet {}] after {} attempts: {}", failedPacketNumber, attemptCount, cass_error_desc(rc));
     }
 
     void Database::Flush()
@@ -214,5 +234,22 @@ namespace PktParser::Db
             std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
         LOG("FLUSH Complete: {} inserted, {} failed", _totalInserted.load(), _totalFailed.load());
+    }
+
+    CassUuid Database::GenerateFileId()
+    {
+        CassUuid uuid;
+        cass_uuid_gen_time(_uuidGen, &uuid);
+        return uuid;
+    }
+
+    void CallbackContext::ReleaseToPool(InsertData *data)
+    {
+        InsertData* head = poolHead->load(std::memory_order_acquire);
+
+        do
+        {
+            data->next = head;
+        } while (!poolHead->compare_exchange_weak(head, data, std::memory_order_release, std::memory_order_acquire));
     }
 }

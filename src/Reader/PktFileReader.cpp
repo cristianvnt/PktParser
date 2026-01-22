@@ -7,7 +7,7 @@ using namespace PktParser::Enums;
 namespace PktParser::Reader
 {
 	PktFileReader::PktFileReader(std::string const& filepath)
-		: _pktNumber{ 0 }
+		: _filepath{ filepath }, _pktNumber{ 0 }
 	{
 		_file.open(filepath, std::ios::binary);
 

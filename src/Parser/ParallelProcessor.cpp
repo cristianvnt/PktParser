@@ -11,7 +11,8 @@ using namespace PktParser::Versions;
 namespace PktParser
 {
     void ParallelProcessor::ProcessBatch(std::vector<Pkt> const& batch, VersionContext& ctx,
-        Db::Database& db, std::atomic<size_t>& parsedCount, std::atomic<size_t>& skippedCount, std::atomic<size_t>& failedCount)
+        Db::Database& db, std::string const& srcFile, CassUuid const& fileId,
+        std::atomic<size_t>& parsedCount, std::atomic<size_t>& skippedCount, std::atomic<size_t>& failedCount)
     {
         for (Pkt const& pkt : batch)
         {
@@ -27,7 +28,7 @@ namespace PktParser
                 }
 
                 json fullPkt = ctx.Serializer->SerializeFullPacket(pkt.header, opcodeName, ctx.Build, pkt.pktNumber, std::move(*pktDataOpt));
-                db.StorePacket(std::move(fullPkt));
+                db.StorePacket(std::move(fullPkt), srcFile, fileId);
 
                 parsedCount.fetch_add(1, std::memory_order_relaxed);
             }
@@ -40,9 +41,12 @@ namespace PktParser
     }
 
     void ParallelProcessor::WorkerThread(std::queue<std::vector<Reader::Pkt>>& batchQ, std::mutex& qMutex, std::condition_variable& qCV, std::atomic<bool>& done,
-        VersionContext& ctx, Db::Database& db, std::atomic<size_t>& parsedCount, std::atomic<size_t>& skippedCount, std::atomic<size_t>& failedCount)
+        VersionContext& ctx, Db::Database& db, std::string const& srcFile, CassUuid const& fileId,
+        std::atomic<size_t>& parsedCount, std::atomic<size_t>& skippedCount, std::atomic<size_t>& failedCount)
     {
-        static std::atomic<int64_t> lastLogTime{0};
+        static std::atomic<int64_t> batchesProcessed{};
+        static constexpr size_t LOG_EVERY_N_BATCHES = 100;
+
         while (true)
         {
             std::vector<Pkt> batch;
@@ -64,13 +68,11 @@ namespace PktParser
 
             if (!batch.empty())
             {
-                ProcessBatch(batch, ctx, db, parsedCount, skippedCount, failedCount);
-                auto now = std::chrono::steady_clock::now().time_since_epoch().count();
-                int64_t lastLog = lastLogTime.load(std::memory_order_relaxed);
+                ProcessBatch(batch, ctx, db, srcFile, fileId, parsedCount, skippedCount, failedCount);
                 
-                if (now - lastLog > 5'000'000'000LL)
-                    if (lastLogTime.compare_exchange_strong(lastLog, now))
-                        LOG("Progress: ~{} packets parsed...", parsedCount.load());
+                size_t count = batchesProcessed.fetch_add(1, std::memory_order_relaxed);
+                if (count % LOG_EVERY_N_BATCHES == 0)
+                    LOG("Progress: ~{} packets parsed...", parsedCount.load());
             }
         }
     }
@@ -87,6 +89,13 @@ namespace PktParser
         }
 
         LOG("Using {} threads", threadCount);
+
+        std::string srcFile = reader.GetFilePath();
+        CassUuid fileId = db.GenerateFileId();
+
+        char uuidStr[CASS_UUID_STRING_LENGTH];
+        cass_uuid_string(fileId, uuidStr);
+        LOG("Processing file '{}' with UUID {}", srcFile, uuidStr);
         
         std::queue<std::vector<Pkt>> batchQueue;
         std::mutex queueMutex;
@@ -101,7 +110,7 @@ namespace PktParser
         workers.reserve(threadCount);
         for (size_t i = 0; i < threadCount; ++i)
             workers.emplace_back(WorkerThread, std::ref(batchQueue), std::ref(queueMutex), std::ref(queueCV), std::ref(done),
-                std::ref(ctx), std::ref(db), std::ref(parsedCount), std::ref(skippedCount), std::ref(failedCount));
+                std::ref(ctx), std::ref(db), std::ref(srcFile), std::ref(fileId), std::ref(parsedCount), std::ref(skippedCount), std::ref(failedCount));
 
         std::vector<Pkt> currentBatch;
         currentBatch.reserve(BATCH_SIZE);

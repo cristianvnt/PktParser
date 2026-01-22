@@ -10,6 +10,7 @@
 #include <atomic>
 #include <queue>
 #include <condition_variable>
+#include <cassandra.h>
 
 namespace PktParser
 {
@@ -22,9 +23,12 @@ namespace PktParser
         static constexpr size_t MAX_QED_BATCHES = 3;
         
         static void ProcessBatch(std::vector<Reader::Pkt> const& batch, VersionContext& ctx,
-            Db::Database& db, std::atomic<size_t>& parsedCount, std::atomic<size_t>& skippedCount, std::atomic<size_t>& failedCount);
-        static void WorkerThread(std::queue<std::vector<Reader::Pkt>>& batchQ, std::mutex& qMutex, std::condition_variable& qCV, std::atomic<bool>& done,
-            VersionContext& ctx, Db::Database& db, std::atomic<size_t>& parsedCount, std::atomic<size_t>& skippedCount, std::atomic<size_t>& failedCount);
+            Db::Database& db, std::string const& srcFile, CassUuid const& fileId,
+            std::atomic<size_t>& parsedCount, std::atomic<size_t>& skippedCount, std::atomic<size_t>& failedCount);
+        static void WorkerThread(std::queue<std::vector<Reader::Pkt>>& batchQ, std::mutex& qMutex,
+            std::condition_variable& qCV, std::atomic<bool>& done,
+            VersionContext& ctx, Db::Database& db, std::string const& srcFile, CassUuid const& fileId,
+            std::atomic<size_t>& parsedCount, std::atomic<size_t>& skippedCount, std::atomic<size_t>& failedCount);
     public:
         struct Stats
         {

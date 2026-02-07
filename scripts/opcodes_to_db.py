@@ -36,7 +36,6 @@ def parse_wpp_opcodes_file(file_path: Path) -> tuple[list[dict], str | None]:
     with open(file_path, 'r', encoding='utf-8') as f:
         content = f.read()
 
-    # extract version from namespace
     namespace_match = re.search(NAMESPACE_PATTERN, content)
     if not namespace_match:
         return [], None
@@ -44,7 +43,6 @@ def parse_wpp_opcodes_file(file_path: Path) -> tuple[list[dict], str | None]:
     version = namespace_match.group(1)
     opcodes = []
 
-    # parse each opcode block
     patterns = [
         (r'private static readonly BiDictionary<Opcode, int> ClientOpcodes = new\(\)\s*\{(.*?)\};', 'ClientToServer'),
         (r'private static readonly BiDictionary<Opcode, int> ServerOpcodes = new\(\)\s*\{(.*?)\};', 'ServerToClient'),
@@ -61,7 +59,6 @@ def parse_wpp_opcodes_file(file_path: Path) -> tuple[list[dict], str | None]:
     return opcodes, version
 
 def parse_opcode_block(block_content: str, direction: str, version: str) -> list[dict]:
-    # extract individual opcode entries from a block.
     opcodes = []
     pattern = r'\{\s*Opcode\.(\w+),\s*0x([0-9A-Fa-f]+)\s*\}'
     matches = re.findall(pattern, block_content)
@@ -77,22 +74,18 @@ def parse_opcode_block(block_content: str, direction: str, version: str) -> list
     return opcodes
 
 def extract_build_number(version: str) -> int:
-    # extract 5-digit build number from version string
     match = re.search(BUILD_NUMBER_PATTERN, version)
     return int(match.group(1)) if match else 0
 
 def extract_patch_version(version: str) -> str:
-    # extract patch version from version string
     match = re.search(PATCH_VERSION_PATTERN, version)
     if match:
         return f"{match.group(1)}.{match.group(2)}.{match.group(3)}"
     return "unknown"
 
 def import_to_database(conn: psycopg2.extensions.connection, opcodes: list[dict], version: str) -> tuple[int, int]:
-    # import opcodes to database
     cursor = conn.cursor()
     
-    # insert build metadata
     build_number = extract_build_number(version)
     patch_version = extract_patch_version(version)
     
@@ -117,7 +110,6 @@ def import_to_database(conn: psycopg2.extensions.connection, opcodes: list[dict]
             RETURNING (xmax = 0) AS was_inserted
         """, (opc['value'], opc['name'], opc['version'], opc['direction']))
         
-        # xmax = 0 -> inserted new row, xmax != 0 -> updated existing row
         was_inserted = cursor.fetchone()[0]
         if was_inserted:
             inserted += 1
@@ -153,7 +145,6 @@ def main():
         print("Error: No opcodes found in file")
         sys.exit(1)
     
-    # count by direction
     cmsg_count = sum(1 for o in opcodes if o['direction'] == 'ClientToServer')
     smsg_count = sum(1 for o in opcodes if o['direction'] == 'ServerToClient')
     misc_count = sum(1 for o in opcodes if o['direction'] == 'Misc')
@@ -165,7 +156,6 @@ def main():
     print(f"  Total: {len(opcodes)}")
     print()
     
-    # connect to database
     try:
         conn = psycopg2.connect(**DB_CONFIG)
         print(f"Connected to database: {DB_CONFIG['dbname']}")
@@ -174,7 +164,6 @@ def main():
         print(f"Details: {e}")
         sys.exit(1)
     
-    # import opcodes
     try:
         inserted, updated = import_to_database(conn, opcodes, version)
         print(f"  Inserted: {inserted}")

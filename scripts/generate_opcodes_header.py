@@ -17,7 +17,6 @@ DB_CONFIG = \
 }
 
 def to_pascal_case(opcode_name: str) -> str:
-    # convert opcode name to parser function name
     if opcode_name.startswith("SMSG_"):
         opcode_name = opcode_name[5:]
     elif opcode_name.startswith("CMSG_"):
@@ -27,7 +26,6 @@ def to_pascal_case(opcode_name: str) -> str:
     return 'Parse' + ''.join(word.capitalize() for word in parts)
 
 def generate_opcodes_header(namespace: str, opcodes: list, output_path: Path):
-    # generate Opcodes.h file with opcodes
     header = f"""// AUTO-GENERATED from database - DO NOT EDIT
 // parser version: {namespace}
 // total opcodes: {len(opcodes)}
@@ -54,7 +52,6 @@ namespace PktParser::Versions::{namespace}::Opcodes
         f.write(header)
 
 def generate_registration_file(namespace: str, opcodes: list, opcode_count: int, reserve_size: int, output_path: Path):
-    # generate RegisterHandlers.inl file with handler registrations
     registration = f"""// AUTO-GENERATED from database - DO NOT EDIT
 // parser version: {namespace}
 // opcode count: {opcode_count}
@@ -89,7 +86,6 @@ namespace PktParser::Versions::{namespace}
         f.write(registration)
 
 def generate_parser_files(parser_version: str, version_dir: str):
-    # generate C++ opcode files for a parser version
     try:
         conn = psycopg2.connect(**DB_CONFIG)
         cursor = conn.cursor()
@@ -129,7 +125,7 @@ def generate_parser_files(parser_version: str, version_dir: str):
         exit(1)
 
 def main():
-    print("Generating C++ opcode files from database")
+    print("Generating opcode files from database")
     print()
     
     if len(sys.argv) < 2:

@@ -42,7 +42,6 @@ def extract_build_mappings(content: str) -> dict[int, dict[str, str]]:
             def_major, def_minor, def_patch, def_build = return_match.groups()
             parser_version = f"V{def_major}_{def_minor}_{def_patch}_{def_build}"
             
-            # all builds in current_cases map to this parser_version
             for case in current_cases:
                 mappings[case['build']] = {
                     'patch_version': case['patch'],
@@ -54,7 +53,6 @@ def extract_build_mappings(content: str) -> dict[int, dict[str, str]]:
     return mappings
 
 def import_to_database(mappings: dict[int, dict[str, str]]) -> tuple[int, int]:
-    # insert all build mappings into database
     conn = psycopg2.connect(**DB_CONFIG)
     cursor = conn.cursor()
     

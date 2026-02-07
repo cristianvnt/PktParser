@@ -24,7 +24,6 @@ DB_CONFIG = \
 GITHUB_API_BASE = "https://api.github.com/repos/mdX7/ngdp_data"
 
 def fetch_build_list() -> list[int]:
-    # fetch list of build numbers from GitHub repository
     url = f"{GITHUB_API_BASE}/contents/EU/wow"
     
     try:
@@ -45,7 +44,6 @@ def fetch_build_list() -> list[int]:
             print("Error: Unexpected API response format")
             return []
         
-        # extract build numbers from directory names
         builds = []
         for item in contents:
             if item.get('type') == 'dir':
@@ -55,7 +53,7 @@ def fetch_build_list() -> list[int]:
                     if 1000 <= build_num <= 99999:  # valid build number range
                         builds.append(build_num)
         
-        return sorted(builds, reverse=True)  # newest first
+        return sorted(builds, reverse=True)
     
     except requests.RequestException as e:
         print(f"Error: Network request failed - {e}")
@@ -80,7 +78,6 @@ def fetch_deploy_timestamp(build_number: int) -> datetime | None:
         if not commits or len(commits) == 0:
             return None
         
-        # parse ISO timestamp
         timestamp_str = commits[0]['commit']['committer']['date']
         return datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
     
@@ -88,7 +85,6 @@ def fetch_deploy_timestamp(build_number: int) -> datetime | None:
         return None
 
 def update_database(builds_with_timestamps: list[dict]) -> tuple[int, int]:
-    # update database with deploy timestamps
     conn = psycopg2.connect(**DB_CONFIG)
     cursor = conn.cursor()
     
@@ -100,15 +96,13 @@ def update_database(builds_with_timestamps: list[dict]) -> tuple[int, int]:
         build_num = item['build']
         deploy_time = item['timestamp']
         
-        # check if build exists in database
         cursor.execute("SELECT 1 FROM builds WHERE build_number = %s", (build_num,))
         
         if cursor.fetchone() is None:
             skipped += 1
-            skipped_builds.append(build_num)  # add to list
+            skipped_builds.append(build_num)
             continue
         
-        # update only if deploy_timestamp is NULL
         cursor.execute("""
             UPDATE builds 
             SET deploy_timestamp = %s 
@@ -128,7 +122,6 @@ def main():
     print(f"Source: {GITHUB_API_BASE}")
     print()
     
-    # parse command line arguments for range
     start_idx = 0
     end_idx = 10  # default: fetch 10 most recent builds
     
@@ -146,7 +139,6 @@ def main():
     print(f"Found {len(all_builds)} total builds")
     print()
     
-    # select range
     selected_builds = all_builds[start_idx:end_idx]
     
     if not selected_builds:

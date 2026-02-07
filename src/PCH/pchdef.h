@@ -26,18 +26,7 @@
 
 // stable headers
 #include "Misc/Define.h"
-#include "Misc/WowGuid.h"
 #include "Misc/Logger.h"
-#include "Misc/Utilities.h"
 #include "Misc/Exceptions.h"
-
-#include "Reader/BitReader.h"
-
-// structures
-#include "Structures/SpellGoData.h"
-#include "Structures/SpellTargetData.h"
-#include "Structures/TargetLocation.h"
-#include "Structures/Packed/AuthChallengeData.h"
-#include "Structures/Packed/WorldStateInfo.h"
 
 #endif

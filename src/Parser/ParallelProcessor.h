@@ -25,10 +25,12 @@ namespace PktParser
         static void ProcessBatch(std::vector<Reader::Pkt> const& batch, VersionContext& ctx,
             Db::Database& db, std::string const& srcFile, CassUuid const& fileId,
             std::atomic<size_t>& parsedCount, std::atomic<size_t>& skippedCount, std::atomic<size_t>& failedCount);
+            
         static void WorkerThread(std::queue<std::vector<Reader::Pkt>>& batchQ, std::mutex& qMutex,
             std::condition_variable& qCV, std::atomic<bool>& done,
             VersionContext& ctx, Db::Database& db, std::string const& srcFile, CassUuid const& fileId,
-            std::atomic<size_t>& parsedCount, std::atomic<size_t>& skippedCount, std::atomic<size_t>& failedCount);
+            std::atomic<size_t>& parsedCount, std::atomic<size_t>& skippedCount, std::atomic<size_t>& failedCount,
+            std::atomic<size_t>& batchesProcessed);
     public:
         struct Stats
         {

@@ -1,5 +1,7 @@
 #include "pchdef.h"
 
+#include "BitReader.h"
+
 namespace PktParser::Reader
 {
 	std::string BitReader::ReadWoWString(uint32 len /*= 0*/)

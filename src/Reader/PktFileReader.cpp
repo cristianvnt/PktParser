@@ -81,8 +81,13 @@ namespace PktParser::Reader
 			_pktNumber++;
 			return pkt;
 		}
-		catch (...)
+		catch (ParseException const&)
 		{
+			return std::nullopt;
+		}
+		catch (std::exception const& e)
+		{
+			LOG("Unexpected error reading packet {}: {}", _pktNumber, e.what());
 			return std::nullopt;
 		}
 	}

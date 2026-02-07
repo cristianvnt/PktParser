@@ -1,7 +1,7 @@
 #ifndef WOW_GUID_H
 #define WOW_GUID_H
 
-#include "Misc/Define.h"
+#include "Define.h"
 #include "Reader/BitReader.h"
 #include "Enums/GuidTypes.h"
 

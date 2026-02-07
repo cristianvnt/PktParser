@@ -84,6 +84,9 @@ int main(int argc, char* argv[])
 		size_t parsedCount = 0;
 		size_t skippedCount = 0;
 		size_t failedCount = 0;
+		
+		std::string srcFile = reader.GetFilePath();
+		CassUuid fileId = db.GenerateFileId();
 
 		while (true)
 		{
@@ -106,7 +109,7 @@ int main(int argc, char* argv[])
 
 				json fullPacket = ctx.Serializer->SerializeFullPacket(pkt.header, opcodeName, build, pkt.pktNumber, std::move(*pktDataOpt));
 
-				db.StorePacket(std::move(fullPacket));
+				db.StorePacket(std::move(fullPacket), srcFile, fileId);
 				parsedCount++;
 
 				if (parsedCount % 10000 == 0)
@@ -145,8 +148,4 @@ int main(int argc, char* argv[])
 		LOG("Error: {}", e.what());
 		return 1;
 	}
-
-#ifdef _WIN32
-	std::cin.get();
-#endif
 }

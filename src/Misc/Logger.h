@@ -10,6 +10,7 @@ class Logger
 private:
 	Logger() = default;
 	std::ofstream _logFile;
+	std::mutex _mutex;
 
 	Logger(Logger const&) = delete;
 	Logger& operator=(Logger const&) = delete;
@@ -32,6 +33,8 @@ public:
 	void Log(fmt::format_string<Args...> fmtStr, Args&&... args)
 	{
 		std::string message = fmt::format(fmtStr, std::forward<Args>(args)...);
+
+		std::lock_guard<std::mutex> lock(_mutex);
 
 		fmt::print("{}\n", message);
 

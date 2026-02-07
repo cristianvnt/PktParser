@@ -3,6 +3,7 @@
 
 #include "Misc/Define.h"
 #include "Misc/Exceptions.h"
+#include <fmt/core.h>
 
 #include <vector>
 #include <string>
@@ -33,7 +34,9 @@ namespace PktParser::Reader
 			ResetBitReader();
 
 			if (_bytePos >= _length)
-				throw ParseException{"Read UInt8"};
+				throw ParseException{
+					fmt::format("ReadUInt8: pos {} + 1 > length {}", _bytePos, _length)
+				};
 
 			uint8 value = _data[_bytePos];
 			_bytePos++;
@@ -45,7 +48,9 @@ namespace PktParser::Reader
 			ResetBitReader();
 
 			if (_bytePos + sizeof(uint16) > _length)
-				throw ParseException{"Read UInt16"};
+				throw ParseException{
+					fmt::format("ReadUInt16: pos {} + 2 > length {}", _bytePos, _length)
+				};
 
 			uint16 value;
 			std::memcpy(&value, &_data[_bytePos], sizeof(uint16));
@@ -58,7 +63,9 @@ namespace PktParser::Reader
 			ResetBitReader();
 
 			if (_bytePos + sizeof(uint32) > _length)
-				throw ParseException{"Read UInt32"};
+				throw ParseException{
+					fmt::format("ReadUInt32: pos {} + 4 > length {}", _bytePos, _length)
+				};
 
 			uint32 value;
 			std::memcpy(&value, &_data[_bytePos], sizeof(uint32));
@@ -71,7 +78,9 @@ namespace PktParser::Reader
 			ResetBitReader();
 
 			if (_bytePos + sizeof(uint64) > _length)
-				throw ParseException{"Read UInt64"};
+				throw ParseException{
+					fmt::format("ReadUInt64: pos {} + 8 > length {}", _bytePos, _length)
+				};
 
 			uint64 value;
 			std::memcpy(&value, &_data[_bytePos], sizeof(uint64));
@@ -89,7 +98,9 @@ namespace PktParser::Reader
 			ResetBitReader();
 
 			if (_bytePos + sizeof(float) > _length)
-				throw ParseException{"Read Float"};
+				throw ParseException{
+					fmt::format("ReadFloat: pos {} + {} > length {}", _bytePos, sizeof(float), _length)
+				};
 
 			float value;
 			std::memcpy(&value, &_data[_bytePos], sizeof(float));
@@ -102,7 +113,9 @@ namespace PktParser::Reader
 			if (_bitPos == 8)
 			{
 				if (_bytePos >= _length)
-					throw ParseException{"Read Bit"};
+					throw ParseException{
+						fmt::format("ReadBit: pos {} + 1 > length {}", _bytePos, _length)
+					};
 
 				_bitPos = 0;
 				_curBitVal = _data[_bytePos];
@@ -125,7 +138,9 @@ namespace PktParser::Reader
 		void Skip(size_t bytes)
 		{
 			if (_bytePos + bytes > _length)
-				throw ParseException{"Skip"};
+				throw ParseException{
+					fmt::format("Skip: pos {} + {} > length {}", _bytePos, bytes, _length)
+				};
 
 			_bytePos += bytes;
 		}

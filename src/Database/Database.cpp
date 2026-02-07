@@ -1,6 +1,7 @@
 #include "pchdef.h"
 #include "Database.h"
 #include "Config.h"
+#include "Misc/WowGuid.h"
 
 using namespace PktParser::Reader;
 using namespace PktParser::Misc;
@@ -184,24 +185,28 @@ namespace PktParser::Db
             insertData->retryCount++;
             LOG("Retrying packet {} (attempt {}/3) - write timeout", insertData->packetNumber, insertData->retryCount);
 
-            std::this_thread::sleep_for(std::chrono::milliseconds(500 * insertData->retryCount));
+            int delay = 500 * insertData->retryCount;
 
-            cass_future_free(insertData->future);
+            std::thread([insertData, ctx, delay]()
+            {
+                std::this_thread::sleep_for(std::chrono::milliseconds(delay));
 
-            CassStatement* stmt = cass_prepared_bind(ctx->preparedStmt);
-            BindInsertStatement(stmt, insertData);
+                CassStatement* stmt = cass_prepared_bind(ctx->preparedStmt);
+                BindInsertStatement(stmt, insertData);
 
-            // retry
-            CassFuture* retryFuture = cass_session_execute(ctx->session, stmt);
-            insertData->future = retryFuture;
-            cass_future_set_callback(retryFuture, InsertCallback, insertData);
+                CassFuture* retryFuture = cass_session_execute(ctx->session, stmt);
+                insertData->future = retryFuture;
+                cass_future_set_callback(retryFuture, InsertCallback, insertData);
+                
+                cass_statement_free(stmt);
+            }).detach();
             
-            cass_statement_free(stmt);
             return;
         }
 
         int failedPacketNumber = insertData->packetNumber;
         int attemptCount = insertData->retryCount + 1;
+        std::string errDesc = cass_error_desc(rc);
 
         // total failure
         ctx->totalFailed->fetch_add(1, std::memory_order_relaxed);
@@ -210,10 +215,7 @@ namespace PktParser::Db
         cass_future_free(insertData->future);
         ctx->ReleaseToPool(insertData);
 
-        const char* msg;
-        size_t msgLen;
-        cass_future_error_message(future, &msg, &msgLen);
-        LOG("INSERT PERMANENTLY FAILED [Packet {}] after {} attempts: {}", failedPacketNumber, attemptCount, cass_error_desc(rc));
+        LOG("INSERT PERMANENTLY FAILED [Packet {}] after {} attempts: {}", failedPacketNumber, attemptCount, errDesc);
     }
 
     void Database::BindInsertStatement(CassStatement* stmt, InsertData const* data)

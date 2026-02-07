@@ -42,9 +42,9 @@ namespace PktParser
 
     void ParallelProcessor::WorkerThread(std::queue<std::vector<Reader::Pkt>>& batchQ, std::mutex& qMutex, std::condition_variable& qCV, std::atomic<bool>& done,
         VersionContext& ctx, Db::Database& db, std::string const& srcFile, CassUuid const& fileId,
-        std::atomic<size_t>& parsedCount, std::atomic<size_t>& skippedCount, std::atomic<size_t>& failedCount)
+        std::atomic<size_t>& parsedCount, std::atomic<size_t>& skippedCount, std::atomic<size_t>& failedCount,
+        std::atomic<size_t>& batchesProcessed)
     {
-        static std::atomic<int64_t> batchesProcessed{};
         static constexpr size_t LOG_EVERY_N_BATCHES = 100;
 
         while (true)
@@ -105,12 +105,14 @@ namespace PktParser
         std::atomic<size_t> parsedCount{0};
         std::atomic<size_t> skippedCount{0};
         std::atomic<size_t> failedCount{0};
+        std::atomic<size_t> batchesProcessed{0};
 
         std::vector<std::thread> workers;
         workers.reserve(threadCount);
         for (size_t i = 0; i < threadCount; ++i)
             workers.emplace_back(WorkerThread, std::ref(batchQueue), std::ref(queueMutex), std::ref(queueCV), std::ref(done),
-                std::ref(ctx), std::ref(db), std::ref(srcFile), std::ref(fileId), std::ref(parsedCount), std::ref(skippedCount), std::ref(failedCount));
+                std::ref(ctx), std::ref(db), std::ref(srcFile), std::ref(fileId), std::ref(parsedCount), std::ref(skippedCount), std::ref(failedCount),
+                std::ref(batchesProcessed));
 
         std::vector<Pkt> currentBatch;
         currentBatch.reserve(BATCH_SIZE);

@@ -6,9 +6,17 @@ if [ "$EUID" -eq 0 ]; then
     exit 1
 fi
 
+if grep -q "systemd=true" /etc/wsl.conf 2>/dev/null || [ ! -f /proc/version ] || ! grep -qi microsoft /proc/version; then
+    echo "Using systemctl"
+    INIT_CMD="sudo systemctl enable --now"
+else
+    echo "WSL detected without systemd, using service"
+    INIT_CMD="sudo service"
+fi
+
 echo "Installing build tools..."
 sudo apt-get update
-sudo apt-get install -y build-essential gcc-13 g++-13 cmake git wget curl
+sudo apt-get install -y build-essential gcc-13 g++-13 cmake git wget curl ninja-build
 sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-13 110
 sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-13 110
 sudo update-alternatives --auto gcc
@@ -19,7 +27,7 @@ sudo apt-get install -y libfmt-dev libssl-dev zlib1g-dev libuv1-dev
 
 echo "Installing PostgreSQL..."
 sudo apt-get install -y postgresql postgresql-contrib libpq-dev
-sudo systemctl enable --now postgresql
+$INIT_CMD postgresql
 
 echo "Installing Java 17..."
 sudo apt-get install -y openjdk-17-jdk
@@ -30,7 +38,7 @@ echo "deb [signed-by=/etc/apt/keyrings/apache-cassandra.asc] https://debian.cass
 sudo curl -o /etc/apt/keyrings/apache-cassandra.asc https://downloads.apache.org/cassandra/KEYS
 sudo apt-get update
 sudo apt-get install -y cassandra
-sudo systemctl enable --now cassandra
+$INIT_CMD cassandra
 
 echo "Installing Cassandra C++ driver..."
 if [ ! -d "/tmp/cassandra-cpp-driver" ]; then

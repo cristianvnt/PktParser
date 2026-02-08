@@ -10,10 +10,4 @@ public:
 	explicit ParseException(std::string const& message) : std::runtime_error{ message } { }
 };
 
-class EndOfStreamException : public ParseException
-{
-public:
-	EndOfStreamException() : ParseException{ "Unexpected end of stream " } { }
-};
-
 #endif // !EXCEPTIONS_H

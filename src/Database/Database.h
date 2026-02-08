@@ -5,12 +5,8 @@
 
 #include <nlohmann/json.hpp>
 #include <cassandra.h>
-#include <vector>
 #include <string>
-#include <deque>
-#include <mutex>
 #include <atomic>
-#include <utility>
 
 namespace PktParser::Db
 {
@@ -78,7 +74,7 @@ namespace PktParser::Db
 
 		CassSession* GetSession() const { return _session; }
 
-		void StorePacket(json&& pkt, std::string const& srcFile, CassUuid const& fileId);
+		void StorePacket(Reader::PktHeader const& header, char const* opcodeName, uint32 build, uint32 pktNumber, json&& packetData, std::string const& srcFile, CassUuid const& fileId);
 		void Flush();
 
 		CassUuid GenerateFileId();

@@ -76,10 +76,10 @@ int main(int argc, char* argv[])
             return 1;
         }
 
-		VersionContext ctx = VersionFactory::Create(build);
-        LOG("Parser initialized for build {}", ctx.Build);
-
 #ifdef SYNC_PARSING_MODE
+		VersionContext ctx = VersionFactory::Create(build);
+		LOG("Parser initialized for build {}", ctx.Build);
+
 		auto startTime = std::chrono::high_resolution_clock::now();
 		size_t parsedCount = 0;
 		size_t skippedCount = 0;
@@ -107,9 +107,7 @@ int main(int argc, char* argv[])
 					continue;
 				}
 
-				json fullPacket = ctx.Serializer->SerializeFullPacket(pkt.header, opcodeName, build, pkt.pktNumber, std::move(*pktDataOpt));
-
-				db.StorePacket(std::move(fullPacket), srcFile, fileId);
+				db.StorePacket(pkt.header, opcodeName, build, pkt.pktNumber, std::move(*pktDataOpt), srcFile, fileId);
 				parsedCount++;
 
 				if (parsedCount % 10000 == 0)
@@ -133,15 +131,13 @@ int main(int argc, char* argv[])
         LOG("DB Stats: {} inserted, {} failed", db.GetTotalInserted(), db.GetTotalFailed());
 		LOG("Total time: {}ms ({:.2f} seconds)", duration.count(), duration.count() / 1000.0);
 #else
-		Stats stats = ParallelProcessor::ProcessAllPackets(reader, ctx, db);
+		Stats stats = ParallelProcessor::ProcessAllPackets(reader, db);
 
 		LOG(">>>>> PARSE COMPLETE <<<<<");
         LOG("Parsed: {}, Skipped: {}, Failed: {}", stats.ParsedCount, stats.SkippedCount, stats.FailedCount);
         LOG("DB Stats: {} inserted, {} failed", db.GetTotalInserted(), db.GetTotalFailed());
         LOG("Total time: {}ms ({:.2f} seconds)", stats.TotalTime, stats.TotalTime / 1000.0);
 #endif
-
-		VersionFactory::Destroy(ctx);
 	}
 	catch (std::exception const& e)
 	{

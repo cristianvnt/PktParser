@@ -7,18 +7,14 @@
 
 namespace PktParser::Db
 {
-    bool Config::_loaded = false;
+    std::once_flag Config::_initFlag;
 
-    void Config::LoadEnv()
+    void Config::LoadEnvImpl()
     {
-        if (_loaded)
-            return;
-
         std::ifstream envFile(".env");
         if (!envFile.is_open())
         {
             LOG("WARNING: .env file not found, using defaults");
-            _loaded = true;
             return;
         }
 
@@ -37,8 +33,6 @@ namespace PktParser::Db
 
             setenv(key.c_str(), value.c_str(), 0);
         }
-
-        _loaded = true;
     }
 
     std::string Config::GetPostgresConnectionString()

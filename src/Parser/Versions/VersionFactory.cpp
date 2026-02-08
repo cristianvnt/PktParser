@@ -46,14 +46,6 @@ namespace PktParser::Versions
         return ctx;
     }
 
-    void VersionFactory::Destroy(VersionContext& ctx)
-    {
-        delete ctx.Parser;
-        delete ctx.Serializer;
-        ctx.Parser = nullptr;
-        ctx.Serializer = nullptr;
-    }
-
     bool VersionFactory::IsSupported(uint32 build)
     {
         return Db::BuildInfo::Instance().IsSupported(build);

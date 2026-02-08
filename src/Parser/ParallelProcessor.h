@@ -28,7 +28,7 @@ namespace PktParser
             
         static void WorkerThread(std::queue<std::vector<Reader::Pkt>>& batchQ, std::mutex& qMutex,
             std::condition_variable& qCV, std::atomic<bool>& done,
-            VersionContext& ctx, Db::Database& db, std::string const& srcFile, CassUuid const& fileId,
+            VersionContext ctx, Db::Database& db, std::string const& srcFile, CassUuid const& fileId,
             std::atomic<size_t>& parsedCount, std::atomic<size_t>& skippedCount, std::atomic<size_t>& failedCount,
             std::atomic<size_t>& batchesProcessed);
     public:
@@ -40,7 +40,7 @@ namespace PktParser
             size_t TotalTime;
         };
 
-        static Stats ProcessAllPackets(Reader::PktFileReader& reader, VersionContext& ctx, Db::Database& db, size_t threadCount = 0);
+        static Stats ProcessAllPackets(Reader::PktFileReader& reader, Db::Database& db, size_t threadCount = 0);
     };
 }
 

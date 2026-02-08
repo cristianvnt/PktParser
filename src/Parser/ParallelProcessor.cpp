@@ -27,8 +27,7 @@ namespace PktParser
                     continue;
                 }
 
-                json fullPkt = ctx.Serializer->SerializeFullPacket(pkt.header, opcodeName, ctx.Build, pkt.pktNumber, std::move(*pktDataOpt));
-                db.StorePacket(std::move(fullPkt), srcFile, fileId);
+                db.StorePacket(pkt.header, opcodeName, ctx.Build, pkt.pktNumber, std::move(*pktDataOpt), srcFile, fileId);
 
                 parsedCount.fetch_add(1, std::memory_order_relaxed);
             }
@@ -41,7 +40,7 @@ namespace PktParser
     }
 
     void ParallelProcessor::WorkerThread(std::queue<std::vector<Reader::Pkt>>& batchQ, std::mutex& qMutex, std::condition_variable& qCV, std::atomic<bool>& done,
-        VersionContext& ctx, Db::Database& db, std::string const& srcFile, CassUuid const& fileId,
+        VersionContext ctx, Db::Database& db, std::string const& srcFile, CassUuid const& fileId,
         std::atomic<size_t>& parsedCount, std::atomic<size_t>& skippedCount, std::atomic<size_t>& failedCount,
         std::atomic<size_t>& batchesProcessed)
     {
@@ -77,7 +76,7 @@ namespace PktParser
         }
     }
 
-    ParallelProcessor::Stats ParallelProcessor::ProcessAllPackets(PktFileReader& reader, VersionContext& ctx, Database& db, size_t threadCount /*= 0*/)
+    ParallelProcessor::Stats ParallelProcessor::ProcessAllPackets(PktFileReader& reader, Database& db, size_t threadCount /*= 0*/)
     {
         auto startTime = std::chrono::high_resolution_clock::now();
 
@@ -110,9 +109,12 @@ namespace PktParser
         std::vector<std::thread> workers;
         workers.reserve(threadCount);
         for (size_t i = 0; i < threadCount; ++i)
+        {
+            VersionContext ctx = VersionFactory::Create(reader.GetBuildVersion());
             workers.emplace_back(WorkerThread, std::ref(batchQueue), std::ref(queueMutex), std::ref(queueCV), std::ref(done),
-                std::ref(ctx), std::ref(db), std::ref(srcFile), std::ref(fileId), std::ref(parsedCount), std::ref(skippedCount), std::ref(failedCount),
+                std::move(ctx), std::ref(db), std::ref(srcFile), std::ref(fileId), std::ref(parsedCount), std::ref(skippedCount), std::ref(failedCount),
                 std::ref(batchesProcessed));
+        }
 
         std::vector<Pkt> currentBatch;
         currentBatch.reserve(BATCH_SIZE);

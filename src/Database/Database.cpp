@@ -1,7 +1,7 @@
 #include "pchdef.h"
 #include "Database.h"
 #include "Config.h"
-#include "Misc/WowGuid.h"
+#include "Misc/Utilities.h"
 
 using namespace PktParser::Reader;
 using namespace PktParser::Misc;
@@ -120,7 +120,7 @@ namespace PktParser::Db
         cass_future_free(prepareFuture);
     }
 
-    void Database::StorePacket(json&& pkt, std::string const& srcFile, CassUuid const& fileId)
+	void Database::StorePacket(Reader::PktHeader const& header, char const* opcodeName, uint32 build, uint32 pktNumber, json&& packetData, std::string const& srcFile, CassUuid const& fileId)
     {
         while (_pendingCount.load(std::memory_order_relaxed) > 50000)
             std::this_thread::sleep_for(std::chrono::microseconds(100));
@@ -131,17 +131,16 @@ namespace PktParser::Db
 
         try
         {
-            auto const& header = pkt["Header"];
-            data->build = header["Build"].get<int>();
+            data->build = build;
             data->fileId = fileId;
-            data->packetNumber = pkt["Number"].get<int>();
+            data->packetNumber = pktNumber;
             data->sourceFile = srcFile;
-            data->direction = header["Direction"].get<std::string>();
-            data->packetName = header["PacketName"].get<std::string>();
-            data->packetLen = header["Length"].get<int>();
-            data->opcode = header["Opcode"].get<std::string>();
-            data->timestamp = header["Timestamp"].get<std::string>();
-            data->pktJson = std::move(pkt).dump();
+            data->direction = Misc::DirectionToString(header.direction);
+            data->packetName = opcodeName;
+            data->packetLen = header.packetLength - 4;
+            data->opcode = fmt::format("0x{:06X}", header.opcode);
+            data->timestamp = Misc::FormatUnixMilliseconds(header.timestamp);
+            data->pktJson = std::move(packetData).dump();
             data->context = &_callbackContext;
         }
         catch (std::exception const& e)
@@ -186,6 +185,8 @@ namespace PktParser::Db
             LOG("Retrying packet {} (attempt {}/3) - write timeout", insertData->packetNumber, insertData->retryCount);
 
             int delay = 500 * insertData->retryCount;
+
+            cass_future_free(future);
 
             std::thread([insertData, ctx, delay]()
             {

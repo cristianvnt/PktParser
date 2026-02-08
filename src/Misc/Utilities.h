@@ -3,16 +3,11 @@
 
 #include <string>
 #include <ctime>
-#include <chrono>
-#include <fstream>
-#include <filesystem>
 #include <fmt/core.h>
-#include <array>
 
 #include "Define.h"
 #include "Enums/Direction.h"
 #include "Enums/TargetFlags.h"
-#include "Logger.h"
 
 namespace PktParser::Misc
 {

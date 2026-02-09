@@ -5,8 +5,9 @@ using namespace PktParser::Reader;
 using namespace PktParser::Misc;
 using namespace PktParser::Structures;
 using namespace PktParser::Structures::Packed;
+using namespace PktParser::Versions;
 
-namespace PktParser::Versions::V11_2_7_64632
+namespace PktParser::Versions::V12_0_0_65390
 {
 	json JsonSerializer::SerializeTargetData(SpellTargetData const& target) const
 	{

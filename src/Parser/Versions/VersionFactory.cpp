@@ -4,9 +4,13 @@
 
 #include "V11_2_5_63506/Parser.h"
 #include "V11_2_7_64632/Parser.h"
+#include "V11_2_7_64877/Parser.h"
+#include "V12_0_0_65390/Parser.h"
 
 #include "V11_2_5_63506/JsonSerializer.h"
 #include "V11_2_7_64632/JsonSerializer.h"
+#include "V11_2_7_64877/JsonSerializer.h"
+#include "V12_0_0_65390/JsonSerializer.h"
 
 using namespace PktParser::Misc;
 
@@ -35,6 +39,16 @@ namespace PktParser::Versions
         {
             ctx.Parser = new V11_2_7_64632::Parser();
             ctx.Serializer = new V11_2_7_64632::JsonSerializer();
+        }
+        else if (mapping->ParserVersion == "V11_2_7_64877")
+        {
+            ctx.Parser = new V11_2_7_64877::Parser();
+            ctx.Serializer = new V11_2_7_64877::JsonSerializer();
+        }
+        else if (mapping->ParserVersion == "V12_0_0_65390")
+        {
+            ctx.Parser = new V12_0_0_65390::Parser();
+            ctx.Serializer = new V12_0_0_65390::JsonSerializer();
         }
         else
         {

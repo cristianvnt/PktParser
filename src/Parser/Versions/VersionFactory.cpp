@@ -20,42 +20,23 @@ namespace PktParser::Versions
     {
         VersionContext ctx{};
         ctx.Build = build;
+
         auto mapping = Db::BuildInfo::Instance().GetMapping(build);
         if (!mapping.has_value())
-        {
-            ctx.Parser = nullptr;
-            ctx.Serializer = nullptr;
             return ctx;
-        }
 
         ctx.Patch = mapping->PatchVersion;
 
         if (mapping->ParserVersion == "V11_2_5_63506")
-        {
             ctx.Parser = new V11_2_5_63506::Parser();
-            ctx.Serializer = new V11_2_5_63506::JsonSerializer();
-        }
         else if (mapping->ParserVersion == "V11_2_7_64632")
-        {
             ctx.Parser = new V11_2_7_64632::Parser();
-            ctx.Serializer = new V11_2_7_64632::JsonSerializer();
-        }
         else if (mapping->ParserVersion == "V11_2_7_64877")
-        {
             ctx.Parser = new V11_2_7_64877::Parser();
-            ctx.Serializer = new V11_2_7_64877::JsonSerializer();
-        }
         else if (mapping->ParserVersion == "V12_0_0_65390")
-        {
             ctx.Parser = new V12_0_0_65390::Parser();
-            ctx.Serializer = new V12_0_0_65390::JsonSerializer();
-        }
         else
-        {
             LOG("ERROR: Unknown parser version: {}", mapping->ParserVersion);
-            ctx.Parser = nullptr;
-            ctx.Serializer = nullptr;
-        }
 
         return ctx;
     }

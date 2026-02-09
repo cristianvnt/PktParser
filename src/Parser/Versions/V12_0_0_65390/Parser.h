@@ -3,28 +3,17 @@
 
 #include <unordered_map>
 
-#include "IVersionParser.h"
+#include "Common/BaseVersionParser.h"
 #include "JsonSerializer.h"
-#include "Common/OpcodeRegistry.h"
 
 namespace PktParser::Versions::V12_0_0_65390
 {
 	using BitReader = PktParser::Reader::BitReader;
 
-	class Parser final : public IVersionParser
+	class Parser final : public Common::BaseVersionParser<Parser, JsonSerializer>
 	{
-	private:
-		JsonSerializer _serializer;
-		Common::OpcodeRegistry<Parser> _registry;
-
 	public:
 		Parser();
-		
-		std::optional<json> ParsePacket(uint32 opcode, BitReader& reader) override;
-        char const* GetOpcodeName(uint32 opcode) const override;
-
-		json ParseAuthChallenge(BitReader& reader);
-		json ParseUpdateWorldState(BitReader& reader);
         json ParseSpellGo(BitReader& reader);
 	};
 }

@@ -29,14 +29,14 @@ namespace PktParser::Db
 
 	struct InsertData
 	{
-		int build;
+		int32 build;
 		CassUuid fileId;
 		int32 bucket;
-		int packetNumber;
+		int32 packetNumber;
 		std::string sourceFile;
 		std::string direction;
 		std::string packetName;
-		int packetLen;
+		int32 packetLen;
 		int32 opcode;
 		int64 timestamp;
 		std::string pktJson;
@@ -45,7 +45,7 @@ namespace PktParser::Db
 
 		CassFuture* future;
 		InsertData* next;
-		int retryCount{};
+		int32 retryCount{};
 	};
 	
 	class Database

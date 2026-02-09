@@ -1,0 +1,14 @@
+root = true
+
+# All files
+[*]
+indent_style = space
+end_of_line = lf
+charset = utf-8
+
+# Xml files
+[*.xml]
+indent_size = 2
+
+[*.sln]
+end_of_line = crlf

@@ -50,6 +50,7 @@ namespace PktParser::Reader
 		std::string _filepath;
 		PktFileHeader _fileHeader;
 		uint32 _pktNumber;
+		size_t _fileSize;
 
 	public:
 		explicit PktFileReader(std::string const& filepath);
@@ -63,6 +64,8 @@ namespace PktParser::Reader
 		int GetPacketNumber() const { return _pktNumber; }
 		bool IsOpen() const { return _file.is_open(); }
 		std::string const& GetFilePath() const { return _filepath; }
+		size_t GetFileSize() const { return _fileSize; }
+		uint32 GetStartTime() const { return _fileHeader.startTime; }
 
 	private:
 		PktHeader ParsePacketHeader();

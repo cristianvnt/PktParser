@@ -90,7 +90,7 @@ namespace PktParser
         LOG("Using {} threads", threadCount);
 
         std::string srcFile = reader.GetFilePath();
-        CassUuid fileId = db.GenerateFileId();
+        CassUuid fileId = db.GenerateFileId(reader.GetStartTime(), reader.GetFileSize());
 
         char uuidStr[CASS_UUID_STRING_LENGTH];
         cass_uuid_string(fileId, uuidStr);

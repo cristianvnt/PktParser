@@ -55,7 +55,6 @@ namespace PktParser::Db
 		CassCluster* _cluster;
 		CassSession* _session;
 		CassPrepared* _preparedInsert;
-		CassUuidGen* _uuidGen;
 
 		std::atomic<size_t> _totalInserted{0};
 		std::atomic<size_t> _totalFailed{0};
@@ -78,7 +77,7 @@ namespace PktParser::Db
 		void StorePacket(Reader::PktHeader const& header, char const* opcodeName, uint32 build, uint32 pktNumber, json&& packetData, std::string const& srcFile, CassUuid const& fileId);
 		void Flush();
 
-		CassUuid GenerateFileId();
+		CassUuid GenerateFileId(uint32 startTime, size_t fileSize);
 
 		size_t GetTotalInserted() const { return _totalInserted.load(); }
 		size_t GetTotalFailed() const { return _totalFailed.load(); }

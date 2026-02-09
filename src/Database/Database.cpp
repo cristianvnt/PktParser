@@ -10,9 +10,8 @@ namespace PktParser::Db
 {
 
     Database::Database()
-        :_poolHead{ nullptr }, _cluster{ nullptr }, _session{ nullptr }, _preparedInsert{ nullptr }, _uuidGen{ nullptr }
+        :_poolHead{ nullptr }, _cluster{ nullptr }, _session{ nullptr }, _preparedInsert{ nullptr }
     {
-        _uuidGen = cass_uuid_gen_new();
         _cluster = cass_cluster_new();
         
         cass_cluster_set_timestamp_gen(_cluster, cass_timestamp_gen_server_side_new());
@@ -59,9 +58,6 @@ namespace PktParser::Db
 
         if (_preparedInsert)
             cass_prepared_free(_preparedInsert);
-            
-        if (_uuidGen)
-            cass_uuid_gen_free(_uuidGen);
 
         CassFuture* closeFuture = cass_session_close(_session);
         cass_future_wait(closeFuture);
@@ -248,10 +244,20 @@ namespace PktParser::Db
         LOG("FLUSH Complete: {} inserted, {} failed", _totalInserted.load(), _totalFailed.load());
     }
 
-    CassUuid Database::GenerateFileId()
+    CassUuid Database::GenerateFileId(uint32 startTime, size_t fileSize)
     {
+        std::hash<uint64> hasher;
+
+        uint64 combined1 = (static_cast<uint64>(startTime) << 32) | static_cast<uint64>(fileSize & 0xFFFFFFFF);
+        uint64 combined2 = (static_cast<uint64>(fileSize) << 32) | static_cast<uint64>(startTime);
+        
         CassUuid uuid;
-        cass_uuid_gen_time(_uuidGen, &uuid);
+        uuid.time_and_version = hasher(combined1);
+        uuid.clock_seq_and_node = hasher(combined2);
+
+        uuid.time_and_version = (uuid.time_and_version & 0xFFFFFFFFFFFF0FFFULL) | 0x0000000000004000ULL;
+        uuid.clock_seq_and_node = (uuid.clock_seq_and_node & 0x3FFFFFFFFFFFFFFFULL) | 0x8000000000000000ULL;
+
         return uuid;
     }
 

@@ -3,7 +3,7 @@ WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1};
 
 CREATE TABLE IF NOT EXISTS wow_packets.packets (
     build int,
-    file_id timeuuid,
+    file_id uuid,
     bucket int,
     packet_number int,
     source_file text,

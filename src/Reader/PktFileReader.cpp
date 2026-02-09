@@ -13,6 +13,10 @@ namespace PktParser::Reader
 
 		if (!_file.is_open())
 			throw ParseException{ "Failed to open: " + filepath };
+
+		_file.seekg(0, std::ios::end);
+		_fileSize = static_cast<size_t>(_file.tellg());
+		_file.seekg(0, std::ios::beg);
 	}
 
 	PktFileReader::~PktFileReader()

@@ -14,6 +14,8 @@ namespace PktParser::Db
     {
         _uuidGen = cass_uuid_gen_new();
         _cluster = cass_cluster_new();
+        
+        cass_cluster_set_timestamp_gen(_cluster, cass_timestamp_gen_server_side_new());
 
         std::string cassandraHost = Config::GetCassandraHost();
         cass_cluster_set_contact_points(_cluster, cassandraHost.c_str());
@@ -101,8 +103,8 @@ namespace PktParser::Db
     {
         char const* insertQuery =
             "INSERT INTO wow_packets.packets "
-            "(build, file_id, packet_number, source_file, direction, packet_name, packet_len, opcode, timestamp, pkt_json) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            "(build, file_id, bucket, packet_number, source_file, direction, packet_name, packet_len, opcode, timestamp, pkt_json) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         CassFuture* prepareFuture = cass_session_prepare(_session, insertQuery);
         cass_future_wait(prepareFuture);
@@ -133,13 +135,14 @@ namespace PktParser::Db
         {
             data->build = build;
             data->fileId = fileId;
+            data->bucket = pktNumber / 10000;
             data->packetNumber = pktNumber;
             data->sourceFile = srcFile;
             data->direction = Misc::DirectionToString(header.direction);
             data->packetName = opcodeName;
             data->packetLen = header.packetLength - 4;
-            data->opcode = fmt::format("0x{:06X}", header.opcode);
-            data->timestamp = Misc::FormatUnixMilliseconds(header.timestamp);
+            data->opcode = header.opcode;
+            data->timestamp = static_cast<int64>(header.timestamp * 1000);
             data->pktJson = std::move(packetData).dump();
             data->context = &_callbackContext;
         }
@@ -223,14 +226,15 @@ namespace PktParser::Db
     {
         cass_statement_bind_int32(stmt, 0, data->build);
         cass_statement_bind_uuid(stmt, 1, data->fileId);
-        cass_statement_bind_int32(stmt, 2, data->packetNumber);
-        cass_statement_bind_string(stmt, 3, data->sourceFile.c_str());
-        cass_statement_bind_string(stmt, 4, data->direction.c_str());
-        cass_statement_bind_string(stmt, 5, data->packetName.c_str());
-        cass_statement_bind_int32(stmt, 6, data->packetLen);
-        cass_statement_bind_string(stmt, 7, data->opcode.c_str());
-        cass_statement_bind_string(stmt, 8, data->timestamp.c_str());
-        cass_statement_bind_bytes(stmt, 9, reinterpret_cast<const cass_byte_t*>(data->pktJson.data()), data->pktJson.size());
+        cass_statement_bind_int32(stmt, 2, data->bucket);
+        cass_statement_bind_int32(stmt, 3, data->packetNumber);
+        cass_statement_bind_string(stmt, 4, data->sourceFile.c_str());
+        cass_statement_bind_string(stmt, 5, data->direction.c_str());
+        cass_statement_bind_string(stmt, 6, data->packetName.c_str());
+        cass_statement_bind_int32(stmt, 7, data->packetLen);
+        cass_statement_bind_int32(stmt, 8, data->opcode);
+        cass_statement_bind_int64(stmt, 9, data->timestamp);
+        cass_statement_bind_bytes(stmt, 10, reinterpret_cast<const cass_byte_t*>(data->pktJson.data()), data->pktJson.size());
     }
 
     void Database::Flush()

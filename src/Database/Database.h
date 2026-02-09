@@ -29,15 +29,16 @@ namespace PktParser::Db
 
 	struct InsertData
 	{
+		int build;
+		CassUuid fileId;
+		int32 bucket;
 		int packetNumber;
+		std::string sourceFile;
 		std::string direction;
 		std::string packetName;
 		int packetLen;
-		std::string opcode;
-		std::string timestamp;
-		int build;
-		std::string sourceFile;
-		CassUuid fileId;
+		int32 opcode;
+		int64 timestamp;
 		std::string pktJson;
 
 		CallbackContext* context;

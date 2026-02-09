@@ -2,6 +2,7 @@
 *.env
 !.env.example
 *.data
+*.wsp
 
 # profiling logs
 perf.data

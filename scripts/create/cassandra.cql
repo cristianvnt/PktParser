@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS wow_packets.packets (
     direction text,
     packet_name text,
     packet_len int,
-    opcode text,
+    opcode int,
     timestamp bigint,
     pkt_json blob,
     PRIMARY KEY ((build, file_id, bucket), packet_number)

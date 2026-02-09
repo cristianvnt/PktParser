@@ -13,8 +13,6 @@ namespace PktParser::Common::Parsers::WorldStateHandlers
     template <typename TSerializer>
     inline json ParseUpdateWorldStateDefault(BitReader& reader, TSerializer* serializer)
     {
-        reader.ReadUInt32(); // skip opcode
-        
         auto const* worldStateInfo = reader.ReadChunk<Structures::Packed::WorldStateInfo>();
         reader.ResetBitReader();
         bool hidden = reader.ReadBit();

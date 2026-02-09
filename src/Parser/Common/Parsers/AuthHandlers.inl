@@ -12,7 +12,6 @@ namespace PktParser::Common::Parsers::AuthHandlers
     template <typename TSerializer>
     inline json ParseAuthChallengeDefault(BitReader& reader, TSerializer* serializer)
     {
-        reader.ReadUInt32(); // skip opcode
         reader.ResetBitReader();
         
         Structures::Packed::AuthChallengeData const* authData = reader.ReadChunk<Structures::Packed::AuthChallengeData>();

@@ -22,6 +22,7 @@ namespace PktParser::Versions::V11_2_7_64632
 
     std::optional<json> Parser::ParsePacket(uint32 opcode, BitReader& reader)
     {
+        reader.Skip(4);
         return _registry.Dispatch(opcode, reader);
     }
 

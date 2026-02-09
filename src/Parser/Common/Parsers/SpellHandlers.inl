@@ -27,8 +27,6 @@ namespace PktParser::Common::Parsers::SpellHandlers
     template<typename TSerializer, typename ParseTargetDataFunc>
     inline json ParseSpellGoDefault(BitReader& reader, TSerializer* serializer, ParseTargetDataFunc parseTargetData)
     {
-        reader.ReadUInt32(); // skip opcode
-
         Structures::SpellGoData data{};
 
         data.CasterGUID = Misc::ReadPackedGuid128(reader);
@@ -75,12 +73,7 @@ namespace PktParser::Common::Parsers::SpellHandlers
                 data.MissStatus[i].ReflectStatus = 0;
         }
 
-        data.RemainingPower.resize(data.RemainingPowerCount);
-        for (uint32 i = 0; i < data.RemainingPowerCount; ++i)
-        {
-            data.RemainingPower[i].Type = reader.ReadUInt8();
-            data.RemainingPower[i].Cost = reader.ReadInt32();
-        }
+        reader.ReadChunkArray(data.RemainingPower, data.RemainingPowerCount);
 
         if (data.HasRuneData)
         {

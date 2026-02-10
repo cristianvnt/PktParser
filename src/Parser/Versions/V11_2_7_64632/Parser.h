@@ -14,6 +14,7 @@ namespace PktParser::Versions::V11_2_7_64632
 	{
 	public:
 		Parser();
+		json ParseSpellStart(BitReader& reader);
         json ParseSpellGo(BitReader& reader);
 	};
 }

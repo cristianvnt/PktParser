@@ -2,7 +2,7 @@
 #define SPELL_HANDLERS_INL
 
 #include "Reader/BitReader.h"
-#include "Structures/SpellGoData.h"
+#include "Structures/SpellCastData.h"
 #include "Structures/SpellTargetData.h"
 #include "Structures/TargetLocation.h"
 #include "Misc/WowGuid.h"
@@ -24,10 +24,48 @@ namespace PktParser::Common::Parsers::SpellHandlers
         return loc;
     }
 
-    template<typename TSerializer, typename ParseTargetDataFunc>
-    inline json ParseSpellGoDefault(BitReader& reader, TSerializer* serializer, ParseTargetDataFunc parseTargetData)
+    enum class SpellTargetVersion { Base, Housing };
+
+    template <SpellTargetVersion V = SpellTargetVersion::Base>
+    inline void ParseSpellTargetData(BitReader& reader, Structures::SpellTargetData& targetData)
     {
-        Structures::SpellGoData data{};
+        targetData.Flags = reader.ReadUInt32();
+        targetData.Unit = Misc::ReadPackedGuid128(reader);
+        targetData.Item = Misc::ReadPackedGuid128(reader);
+
+        if constexpr (V >= SpellTargetVersion::Housing)
+        {
+            targetData.HousingGUID = Misc::ReadPackedGuid128(reader);
+            targetData.HousingIsResident = reader.ReadBit();
+        }
+
+        bool hasSrc = reader.ReadBit();
+        bool hasDst = reader.ReadBit();
+        bool hasOrientation = reader.ReadBit();
+        bool hasMapID = reader.ReadBit();
+        uint32 nameLength = reader.ReadBits(7);
+
+        reader.ResetBitReader();
+
+        if (hasSrc)
+            targetData.SrcLocation = SpellHandlers::ReadLocation(reader);
+
+        if (hasDst)
+            targetData.DstLocation = SpellHandlers::ReadLocation(reader);
+
+        if (hasOrientation)
+            targetData.Orientation = reader.ReadFloat();
+
+        if (hasMapID)
+            targetData.MapID = reader.ReadUInt32();
+
+        targetData.Name = reader.ReadWoWString(nameLength);
+    };
+
+    template<typename TSerializer, typename ParseTargetDataFunc>
+    inline json ParseSpellCastData(BitReader& reader, TSerializer* serializer, ParseTargetDataFunc parseTargetData)
+    {
+        Structures::SpellCastData data{};
 
         data.CasterGUID = Misc::ReadPackedGuid128(reader);
         data.CasterUnit = Misc::ReadPackedGuid128(reader);
@@ -88,7 +126,7 @@ namespace PktParser::Common::Parsers::SpellHandlers
         for (uint32 i = 0; i < data.TargetPointsCount; ++i)
             data.TargetPoints[i] = ReadLocation(reader);
 
-        return serializer->SerializeSpellGo(data);
+        return serializer->SerializeSpellData(data);
     }
 }
 

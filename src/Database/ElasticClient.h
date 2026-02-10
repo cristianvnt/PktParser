@@ -22,7 +22,7 @@ namespace PktParser::Db
         int32 _documentCount;
         std::mutex _bufferMutex;
 
-        static constexpr int32 BULK_SIZE = 5000;
+        static constexpr int32 BULK_SIZE = 15000;
         
         std::atomic<size_t> _totalIndexed{ 0 };
         std::atomic<size_t> _totalFailed{ 0 };

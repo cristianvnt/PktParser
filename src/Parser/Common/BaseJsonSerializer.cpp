@@ -33,7 +33,7 @@ namespace PktParser::Common
         return j;
     }
 
-    json BaseJsonSerializer::SerializeSpellGo(SpellGoData const& data) const
+    json BaseJsonSerializer::SerializeSpellData(SpellCastData const& data) const
 	{
 		json j;
 

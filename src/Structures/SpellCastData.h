@@ -75,7 +75,7 @@ namespace PktParser::Structures
 	};
 #pragma pack(pop)
 
-	struct SpellGoData
+	struct SpellCastData
 	{
 		WowGuid128 CasterGUID;
 		WowGuid128 CasterUnit;

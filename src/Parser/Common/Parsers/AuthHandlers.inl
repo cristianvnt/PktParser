@@ -10,7 +10,7 @@ namespace PktParser::Common::Parsers::AuthHandlers
     using json = nlohmann::json;
 
     template <typename TSerializer>
-    inline json ParseAuthChallengeDefault(BitReader& reader, TSerializer* serializer)
+    inline json ParseAuthChallenge(BitReader& reader, TSerializer* serializer)
     {
         reader.ResetBitReader();
         

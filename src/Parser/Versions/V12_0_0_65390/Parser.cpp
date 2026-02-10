@@ -16,41 +16,14 @@ namespace PktParser::Versions::V12_0_0_65390
         _registry.Reserve(REGISTRY_RESERVE_SIZE);
         RegisterAllHandlers(this, _registry);
     }
+    
+    json Parser::ParseSpellStart(BitReader& reader)
+	{
+		return SpellHandlers::ParseSpellCastData(reader, &_serializer, SpellHandlers::ParseSpellTargetData<SpellHandlers::SpellTargetVersion::Housing>);
+	}
 
 	json Parser::ParseSpellGo(BitReader& reader)
 	{
-        auto ParseSpellTargetData = [](BitReader& reader, Structures::SpellTargetData& targetData)
-        {
-            targetData.Flags = reader.ReadUInt32();
-            targetData.Unit = Misc::ReadPackedGuid128(reader);
-            targetData.Item = Misc::ReadPackedGuid128(reader);
-            
-            targetData.Unknown1127_1 = Misc::ReadPackedGuid128(reader);
-            targetData.Unknown1127_2 = reader.ReadBit();
-
-            bool hasSrc = reader.ReadBit();
-            bool hasDst = reader.ReadBit();
-            bool hasOrientation = reader.ReadBit();
-            bool hasMapID = reader.ReadBit();
-            uint32 nameLength = reader.ReadBits(7);
-
-            reader.ResetBitReader();
-
-            if (hasSrc)
-                targetData.SrcLocation = SpellHandlers::ReadLocation(reader);
-
-            if (hasDst)
-                targetData.DstLocation = SpellHandlers::ReadLocation(reader);
-
-            if (hasOrientation)
-                targetData.Orientation = reader.ReadFloat();
-
-            if (hasMapID)
-                targetData.MapID = reader.ReadUInt32();
-
-            targetData.Name = reader.ReadWoWString(nameLength);
-        };
-
-		return SpellHandlers::ParseSpellGoDefault(reader, &_serializer, ParseSpellTargetData);
+		return SpellHandlers::ParseSpellCastData(reader, &_serializer, SpellHandlers::ParseSpellTargetData<SpellHandlers::SpellTargetVersion::Housing>);
 	}
 }

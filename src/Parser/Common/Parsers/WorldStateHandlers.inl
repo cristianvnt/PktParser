@@ -11,7 +11,7 @@ namespace PktParser::Common::Parsers::WorldStateHandlers
     using json = nlohmann::json;
 
     template <typename TSerializer>
-    inline json ParseUpdateWorldStateDefault(BitReader& reader, TSerializer* serializer)
+    inline json ParseUpdateWorldState(BitReader& reader, TSerializer* serializer)
     {
         auto const* worldStateInfo = reader.ReadChunk<Structures::Packed::WorldStateInfo>();
         reader.ResetBitReader();

@@ -12,10 +12,8 @@ namespace PktParser::Versions::V11_2_7_64632
 	{
 		json j = BaseJsonSerializer::SerializeTargetData(target);
 
-		if (target.Unknown1127_1)
-			j["Unknown1127_1"] = target.Unknown1127_1->ToString();
-		if (target.Unknown1127_2)
-			j["Unknown1127_2"] = *target.Unknown1127_2;
+		j["HousingGUID"] = target.HousingGUID.ToString();
+		j["HousingIsResident"] = target.HousingIsResident;
 
 		return j;
 	}

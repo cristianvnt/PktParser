@@ -34,12 +34,12 @@ namespace PktParser::Common
 
         json ParseAuthChallenge(Reader::BitReader& reader)
         {
-            return Parsers::AuthHandlers::ParseAuthChallengeDefault(reader, &_serializer);
+            return Parsers::AuthHandlers::ParseAuthChallenge(reader, &_serializer);
         }
 
         json ParseUpdateWorldState(Reader::BitReader& reader)
         {
-            return Parsers::WorldStateHandlers::ParseUpdateWorldStateDefault(reader, &_serializer);
+            return Parsers::WorldStateHandlers::ParseUpdateWorldState(reader, &_serializer);
         }
 
         TSerializer* GetSerializer() { return &_serializer; }

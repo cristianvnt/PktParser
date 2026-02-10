@@ -92,7 +92,7 @@ namespace PktParser::Db
     void ElasticClient::IndexPacket(Reader::PktHeader const &header, char const *opcodeName, uint32 build, uint32 pktNumber,
         json const &pktData, std::string const &srcFile, std::string const &fileId)
     {
-        bool hasSearchableFields = pktData.contains("SpellID") || pktData.contains("WorldStateId") || pktData.contains("Challenge");
+        bool hasSearchableFields = pktData.contains("SpellID");
         if (!hasSearchableFields)
             return;
 

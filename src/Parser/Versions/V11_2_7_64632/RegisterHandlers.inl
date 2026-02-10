@@ -2102,7 +2102,7 @@ namespace PktParser::Versions::V11_2_7_64632
         //registry.Register(Opcodes::SMSG_SPELL_OR_DAMAGE_IMMUNE, &ParserType::ParseSpellOrDamageImmune);
         //registry.Register(Opcodes::SMSG_SPELL_PERIODIC_AURA_LOG, &ParserType::ParseSpellPeriodicAuraLog);
         //registry.Register(Opcodes::SMSG_SPELL_PREPARE, &ParserType::ParseSpellPrepare);
-        //registry.Register(Opcodes::SMSG_SPELL_START, &ParserType::ParseSpellStart);
+        registry.Register(Opcodes::SMSG_SPELL_START, &ParserType::ParseSpellStart);
         //registry.Register(Opcodes::SMSG_SPELL_VISUAL_LOAD_SCREEN, &ParserType::ParseSpellVisualLoadScreen);
         //registry.Register(Opcodes::SMSG_SPLASH_SCREEN_SHOW_LATEST, &ParserType::ParseSplashScreenShowLatest);
         //registry.Register(Opcodes::SMSG_STAND_STATE_UPDATE, &ParserType::ParseStandStateUpdate);

@@ -1,7 +1,7 @@
 #ifndef BASE_JSON_SERIALIZER_H
 #define BASE_JSON_SERIALIZER_H
 
-#include "Structures/SpellGoData.h"
+#include "Structures/SpellCastData.h"
 #include "Structures/SpellTargetData.h"
 #include "Structures/TargetLocation.h"
 #include "Structures/Packed/AuthChallengeData.h"
@@ -29,7 +29,7 @@ namespace PktParser::Common
         static json SerializeUpdateWorldState(Structures::Packed::WorldStateInfo const* info, bool hidden);
 
         // commons
-        virtual json SerializeSpellGo(Structures::SpellGoData const& data) const;
+        virtual json SerializeSpellData(Structures::SpellCastData const& data) const;
         virtual json SerializeTargetData(Structures::SpellTargetData const& target) const;
 
         // helpers

@@ -142,29 +142,27 @@ namespace PktParser::Reader
 		if ((_fileHeader.snifferId != 0x15 && _fileHeader.snifferId != 0x16) || packetAdditionalSize <= 0)
 			return;
 
-		size_t startPos = _file.tellg();
+		size_t bytesRead = 0;
 
 		_file.read(reinterpret_cast<char*>(&outTimestamp), sizeof(outTimestamp));
+		bytesRead += sizeof(outTimestamp);
 
 		if (_fileHeader.snifferVersion >= 0x0101)
 		{
 			uint8 commentLength;
 			_file.read(reinterpret_cast<char*>(&commentLength), sizeof(commentLength));
+			bytesRead += sizeof(commentLength);
 
 			if (commentLength > 0)
 			{
 				// or just skip?
-				std::vector<char> comment(commentLength);
-				_file.read(comment.data(), commentLength);
-				LOG("Read {} byte message", commentLength);
+				_file.seekg(commentLength, std::ios::cur);
+				bytesRead += commentLength;
 			}
 		}
 
 		if (_fileHeader.snifferVersion >= 0x0102)
 		{
-			size_t currentPos = _file.tellg();
-			size_t bytesRead = currentPos - startPos;
-
 			while (bytesRead < static_cast<size_t>(packetAdditionalSize))
 			{
 				uint8 type;
@@ -191,18 +189,18 @@ namespace PktParser::Reader
 					if (remaining > 0)
 					{
 						_file.seekg(remaining, std::ios::cur);
+						bytesRead += remaining;
 						LOG("UNK type 0x{:02X}, skipped {} bytes", type, remaining);
 					}
-					bytesRead = packetAdditionalSize;
 					break;
 				}
 				}
-
-				currentPos = _file.tellg();
-				bytesRead = currentPos - startPos;
 			}
 		}
-	}
 
+		size_t remaining = packetAdditionalSize - bytesRead;
+		if (remaining > 0)
+			_file.seekg(remaining, std::ios::cur);
+	}
 }
 

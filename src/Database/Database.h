@@ -43,7 +43,6 @@ namespace PktParser::Db
 
 		CallbackContext* context;
 
-		CassFuture* future;
 		InsertData* next;
 		int32 retryCount{};
 	};
@@ -60,6 +59,8 @@ namespace PktParser::Db
 		std::atomic<size_t> _totalFailed{0};
 		std::atomic<size_t> _pendingCount{0};
 
+		static constexpr size_t MAX_PENDING = 8192;
+
 		CallbackContext _callbackContext;
 
 		InsertData* AcquireInsertData();
@@ -67,6 +68,8 @@ namespace PktParser::Db
 
 		static void InsertCallback(CassFuture* future, void* data);
 		static void BindInsertStatement(CassStatement* stmt, InsertData const* data);
+
+		static void RetryInsert(InsertData* data);
 
 	public:
 		Database();

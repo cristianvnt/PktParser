@@ -19,11 +19,15 @@ namespace PktParser::Db
         std::string cassandraHost = Config::GetCassandraHost();
         cass_cluster_set_contact_points(_cluster, cassandraHost.c_str());
 
-        cass_cluster_set_queue_size_io(_cluster, 32768);
-        cass_cluster_set_core_connections_per_host(_cluster, 4);
-        cass_cluster_set_num_threads_io(_cluster, 8);
-        cass_cluster_set_request_timeout(_cluster, 60000);
+        cass_cluster_set_queue_size_io(_cluster, MAX_PENDING);
+        cass_cluster_set_core_connections_per_host(_cluster, 2);
+        cass_cluster_set_num_threads_io(_cluster, 4);
+        cass_cluster_set_request_timeout(_cluster, 30000);
         cass_cluster_set_connect_timeout(_cluster, 15000);
+
+        CassRetryPolicy* retryPolicy = cass_retry_policy_default_new();
+        cass_cluster_set_retry_policy(_cluster, retryPolicy);
+        cass_retry_policy_free(retryPolicy);
 
         _session = cass_session_new();
         CassFuture* connectFuture = cass_session_connect_keyspace(_session, _cluster, "wow_packets");
@@ -120,7 +124,7 @@ namespace PktParser::Db
 
 	void Database::StorePacket(Reader::PktHeader const& header, char const* opcodeName, uint32 build, uint32 pktNumber, json&& packetData, std::string const& srcFile, CassUuid const& fileId)
     {
-        while (_pendingCount.load(std::memory_order_relaxed) > 50000)
+        while (_pendingCount.load(std::memory_order_relaxed) >= MAX_PENDING)
             std::this_thread::sleep_for(std::chrono::microseconds(100));
 
         _pendingCount.fetch_add(1, std::memory_order_relaxed);
@@ -154,9 +158,21 @@ namespace PktParser::Db
         BindInsertStatement(stmt, data);
 
         CassFuture* future = cass_session_execute(_session, stmt);
-        data->future = future;
         cass_future_set_callback(future, InsertCallback, data);
 
+        cass_statement_free(stmt);
+    }
+
+    void Database::RetryInsert(InsertData *data)
+    {
+        CallbackContext* ctx = data->context;
+
+        CassStatement* stmt = cass_prepared_bind(ctx->preparedStmt);
+        BindInsertStatement(stmt, data);
+
+        CassFuture* retryFuture = cass_session_execute(ctx->session, stmt);
+        cass_future_set_callback(retryFuture, InsertCallback, data);
+        
         cass_statement_free(stmt);
     }
 
@@ -166,41 +182,23 @@ namespace PktParser::Db
         CallbackContext* ctx = insertData->context;
         CassError rc = cass_future_error_code(future);
 
+        cass_future_free(future);
+
         if (rc == CASS_OK)
         {
             ctx->totalInserted->fetch_add(1, std::memory_order_relaxed);
             ctx->pendingCount->fetch_sub(1, std::memory_order_relaxed);
-
-            cass_future_free(insertData->future);
             ctx->ReleaseToPool(insertData);
             return;
         }
 
         bool isTimeout = (rc == CASS_ERROR_LIB_REQUEST_TIMED_OUT || rc == CASS_ERROR_SERVER_WRITE_TIMEOUT);
-        bool canRetry = insertData->retryCount < 3;
-        if (isTimeout && canRetry)
+        if (isTimeout && insertData->retryCount < 3)
         {
             insertData->retryCount++;
             LOG("Retrying packet {} (attempt {}/3) - write timeout", insertData->packetNumber, insertData->retryCount);
-
-            int delay = 500 * insertData->retryCount;
-
-            cass_future_free(future);
-
-            std::thread([insertData, ctx, delay]()
-            {
-                std::this_thread::sleep_for(std::chrono::milliseconds(delay));
-
-                CassStatement* stmt = cass_prepared_bind(ctx->preparedStmt);
-                BindInsertStatement(stmt, insertData);
-
-                CassFuture* retryFuture = cass_session_execute(ctx->session, stmt);
-                insertData->future = retryFuture;
-                cass_future_set_callback(retryFuture, InsertCallback, insertData);
-                
-                cass_statement_free(stmt);
-            }).detach();
             
+            RetryInsert(insertData);
             return;
         }
 
@@ -211,8 +209,6 @@ namespace PktParser::Db
         // total failure
         ctx->totalFailed->fetch_add(1, std::memory_order_relaxed);
         ctx->pendingCount->fetch_sub(1, std::memory_order_relaxed);
-
-        cass_future_free(insertData->future);
         ctx->ReleaseToPool(insertData);
 
         LOG("INSERT PERMANENTLY FAILED [Packet {}] after {} attempts: {}", failedPacketNumber, attemptCount, errDesc);

@@ -4,6 +4,7 @@
 #include "Reader/PktFileReader.h"
 #include "VersionFactory.h"
 #include "Database/Database.h"
+#include "Database/ElasticClient.h"
 
 #include <vector>
 #include <thread>
@@ -23,12 +24,12 @@ namespace PktParser
         static constexpr size_t MAX_QED_BATCHES = 3;
         
         static void ProcessBatch(std::vector<Reader::Pkt> const& batch, VersionContext& ctx,
-            Db::Database& db, std::string const& srcFile, CassUuid const& fileId,
+            Db::Database& db, Db::ElasticClient& es, std::string const& srcFile, CassUuid const& fileId, std::string const& fileIdStr,
             std::atomic<size_t>& parsedCount, std::atomic<size_t>& skippedCount, std::atomic<size_t>& failedCount);
             
         static void WorkerThread(std::queue<std::vector<Reader::Pkt>>& batchQ, std::mutex& qMutex,
-            std::condition_variable& qCV, std::atomic<bool>& done,
-            VersionContext ctx, Db::Database& db, std::string const& srcFile, CassUuid const& fileId,
+            std::condition_variable& qCV, std::atomic<bool>& done, VersionContext ctx, Db::Database& db, Db::ElasticClient& es,
+            std::string const& srcFile, CassUuid const& fileId, std::string const& fileIdStr,
             std::atomic<size_t>& parsedCount, std::atomic<size_t>& skippedCount, std::atomic<size_t>& failedCount,
             std::atomic<size_t>& batchesProcessed);
     public:

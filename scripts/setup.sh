@@ -23,7 +23,7 @@ sudo update-alternatives --auto gcc
 sudo update-alternatives --auto g++
 
 echo "Installing C++ libraries..."
-sudo apt-get install -y libfmt-dev libssl-dev zlib1g-dev libuv1-dev
+sudo apt-get install -y libfmt-dev libssl-dev zlib1g-dev libuv1-dev libcurl4-openssl-dev
 
 echo "Installing PostgreSQL..."
 sudo apt-get install -y postgresql postgresql-contrib libpq-dev
@@ -50,6 +50,20 @@ if [ ! -d "/tmp/cassandra-cpp-driver" ]; then
     make -j$(nproc)
     sudo make install
     sudo ldconfig
+fi
+
+echo "Installing Elasticsearch 9.x..."
+if ! dpkg -l | grep -q elasticsearch; then
+    wget -qO - https://artifacts.elastic.co/GPG-KEY-elasticsearch | sudo gpg --dearmor -o /usr/share/keyrings/elasticsearch-keyring.gpg
+    echo "deb [signed-by=/usr/share/keyrings/elasticsearch-keyring.gpg] https://artifacts.elastic.co/packages/9.x/apt stable main" | sudo tee /etc/apt/sources.list.d/elastic-9.x.list
+    sudo apt-get update
+    sudo apt-get install -y elasticsearch
+
+    # security disable for local dev - unnecessary complexity
+    sudo sed -i '/^xpack.security.enabled:/d' /etc/elasticsearch/elasticsearch.yml
+    echo "xpack.security.enabled: false" | sudo tee -a /etc/elasticsearch/elasticsearch.yml
+
+    $INIT_CMD elasticsearch
 fi
 
 echo "Installing Python dependencies..."

@@ -1,9 +1,6 @@
 #include "pchdef.h"
 #include "ParallelProcessor.h"
 
-#include "V11_2_5_63506/JsonSerializer.h"
-#include "V11_2_7_64632/JsonSerializer.h"
-
 using namespace PktParser::Reader;
 using namespace PktParser::Db;
 using namespace PktParser::Versions;
@@ -11,7 +8,7 @@ using namespace PktParser::Versions;
 namespace PktParser
 {
     void ParallelProcessor::ProcessBatch(std::vector<Pkt> const& batch, VersionContext& ctx,
-        Db::Database& db, std::string const& srcFile, CassUuid const& fileId,
+        Db::Database& db, Db::ElasticClient& es, std::string const& srcFile, CassUuid const& fileId, std::string const& fileIdStr,
         std::atomic<size_t>& parsedCount, std::atomic<size_t>& skippedCount, std::atomic<size_t>& failedCount)
     {
         for (Pkt const& pkt : batch)
@@ -27,6 +24,7 @@ namespace PktParser
                     continue;
                 }
 
+                es.IndexPacket(pkt.header, opcodeName, ctx.Build, pkt.pktNumber, *pktDataOpt, srcFile, fileIdStr);
                 db.StorePacket(pkt.header, opcodeName, ctx.Build, pkt.pktNumber, std::move(*pktDataOpt), srcFile, fileId);
 
                 parsedCount.fetch_add(1, std::memory_order_relaxed);
@@ -40,7 +38,7 @@ namespace PktParser
     }
 
     void ParallelProcessor::WorkerThread(std::queue<std::vector<Reader::Pkt>>& batchQ, std::mutex& qMutex, std::condition_variable& qCV, std::atomic<bool>& done,
-        VersionContext ctx, Db::Database& db, std::string const& srcFile, CassUuid const& fileId,
+        VersionContext ctx, Db::Database& db, Db::ElasticClient& es,std::string const& srcFile, CassUuid const& fileId, std::string const& fileIdStr,
         std::atomic<size_t>& parsedCount, std::atomic<size_t>& skippedCount, std::atomic<size_t>& failedCount,
         std::atomic<size_t>& batchesProcessed)
     {
@@ -67,7 +65,7 @@ namespace PktParser
 
             if (!batch.empty())
             {
-                ProcessBatch(batch, ctx, db, srcFile, fileId, parsedCount, skippedCount, failedCount);
+                ProcessBatch(batch, ctx, db, es, srcFile, fileId, fileIdStr, parsedCount, skippedCount, failedCount);
                 
                 size_t count = batchesProcessed.fetch_add(1, std::memory_order_relaxed);
                 if (count % LOG_EVERY_N_BATCHES == 0)
@@ -94,7 +92,10 @@ namespace PktParser
 
         char uuidStr[CASS_UUID_STRING_LENGTH];
         cass_uuid_string(fileId, uuidStr);
-        LOG("Processing file '{}' with UUID {}", srcFile, uuidStr);
+        std::string fileIdStr(uuidStr);
+        LOG("Processing file '{}' with UUID {}", srcFile, fileIdStr);
+
+        ElasticClient es;
         
         std::queue<std::vector<Pkt>> batchQueue;
         std::mutex queueMutex;
@@ -112,7 +113,8 @@ namespace PktParser
         {
             VersionContext ctx = VersionFactory::Create(reader.GetBuildVersion());
             workers.emplace_back(WorkerThread, std::ref(batchQueue), std::ref(queueMutex), std::ref(queueCV), std::ref(done),
-                std::move(ctx), std::ref(db), std::ref(srcFile), std::ref(fileId), std::ref(parsedCount), std::ref(skippedCount), std::ref(failedCount),
+                std::move(ctx), std::ref(db), std::ref(es), std::ref(srcFile), std::ref(fileId), std::ref(fileIdStr),
+                std::ref(parsedCount), std::ref(skippedCount), std::ref(failedCount),
                 std::ref(batchesProcessed));
         }
 
@@ -155,6 +157,9 @@ namespace PktParser
 
         for (auto& worker : workers)
             worker.join();
+
+        es.Flush();
+        LOG("ES Stats: {} indexed, {} failed", es.GetTotalIndexed(), es.GetTotalFailed());
 
         auto endTime = std::chrono::high_resolution_clock::now();
 		auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);

@@ -44,6 +44,7 @@ FetchContent_MakeAvailable(libpqxx)
 find_package(fmt REQUIRED)
 find_package(ZLIB REQUIRED)
 find_package(Threads REQUIRED)
+find_package(CURL REQUIRED)
 
 find_library(CASSANDRA_LIBRARY NAMES cassandra REQUIRED)
 find_path(CASSANDRA_INCLUDE_DIR NAMES cassandra.h REQUIRED)
@@ -87,4 +88,5 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 	${CASSANDRA_LIBRARY}
 	${ZLIB_LIBRARIES}
 	Threads::Threads
+	CURL::libcurl
 )

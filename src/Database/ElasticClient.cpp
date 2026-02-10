@@ -6,38 +6,123 @@ using namespace PktParser::Reader;
 
 namespace PktParser::Db
 {
-    thread_local CURL* ElasticClient::t_curl = nullptr;
+    thread_local ElasticClient::ThreadContext ElasticClient::t_ctx;
 
-    ElasticClient::ElasticClient(std::string const &baseURL /*= "http://localhost:9200"*/)
-        : _baseURL{ baseURL }, _documentCount{ 0 }
+    std::unordered_map<std::string_view, ElasticClient::ExtractorFunc> const ElasticClient::_extractors =
     {
-        curl_global_init(CURL_GLOBAL_DEFAULT);
+        { "SMSG_SPELL_START", &ElasticClient::ExtractSpellFields },
+        { "SMSG_SPELL_GO", &ElasticClient::ExtractSpellFields },
+    };
+
+    ElasticClient::ElasticClient(std::string const& baseURL /*= "http://localhost:9200"*/)
+        : _baseURL{ baseURL }
+    {
     }
 
     ElasticClient::~ElasticClient()
     {
-        Flush();
-        
-        curl_global_cleanup();
-
         LOG("Elasticsearch shutdown: {} indexed, {} failed", _totalIndexed.load(), _totalFailed.load());
     }
 
     CURL* ElasticClient::GetCurl()
     {
-        if (!t_curl)
+        if (!t_ctx.curl)
         {
-            t_curl = curl_easy_init();
-            if (!t_curl)
+            t_ctx.curl = curl_easy_init();
+            if (!t_ctx.curl)
                 LOG("WARN: Failed to init curl for thread");
         }
-        return t_curl;
+        return t_ctx.curl;
     }
 
-    size_t ElasticClient::WriteCallback(char *ptr, size_t size, size_t nmemb, std::string *data)
+    size_t ElasticClient::WriteCallback(char* ptr, size_t size, size_t nmemb, std::string* data)
     {
         data->append(ptr, size * nmemb);
         return size * nmemb;
+    }
+
+    json ElasticClient::BuildBaseDocument(Reader::PktHeader const& header, char const* opcodeName,
+        uint32 build, uint32 pktNumber, std::string const& srcFile, std::string const& fileId)
+    {
+        json doc;
+        doc["build"] = build;
+        doc["file_id"] = fileId;
+        doc["packet_number"] = pktNumber;
+        doc["source_file"] = srcFile;
+        doc["direction"] = Misc::DirectionToString(header.direction);
+        doc["opcode"] = header.opcode;
+        doc["packet_name"] = opcodeName;
+        doc["timestamp"] = static_cast<int64>(header.timestamp * 1000);
+        return doc;
+    }
+
+    bool ElasticClient::ExtractSpellFields(json const& pktData, json& doc)
+    {
+        if (!pktData.contains("SpellID"))
+            return false;
+
+        doc["spell_id"] = pktData["SpellID"];
+
+        if (pktData.contains("CastID"))
+            doc["cast_id"] = pktData["CastID"].get<std::string>();
+
+        if (pktData.contains("OriginalCastID"))
+            doc["original_cast_id"] = pktData["OriginalCastID"].get<std::string>();
+
+        if (pktData.contains("CasterGUID"))
+            doc["caster_guid"] = pktData["CasterGUID"].get<std::string>();
+
+        if (pktData.contains("HitTargets"))
+        {
+            json targetGuids = json::array();
+            for (auto const& target : pktData["HitTargets"])
+                targetGuids.push_back(target["GUID"].get<std::string>());
+            doc["target_guids"] = targetGuids;
+        }
+        
+        if (pktData.contains("HitTargetsCount"))
+            doc["hit_count"] = pktData["HitTargetsCount"];
+
+        if (pktData.contains("MissTargetsCount"))
+            doc["miss_count"] = pktData["MissTargetsCount"];
+
+        return true;
+    }
+
+    void ElasticClient::BufferDocument(json& doc, std::string const& fileId, uint32 pktNumber)
+    {
+        std::string actionLine = R"({"index":{"_index":"wow_packets","_id":")" + fileId + "_" + std::to_string(pktNumber) + R"("}})";
+
+        t_ctx.buffer += actionLine;
+        t_ctx.buffer += '\n';
+        t_ctx.buffer += doc.dump();
+        t_ctx.buffer += '\n';
+        t_ctx.documentCount++;
+
+        if (t_ctx.documentCount >= BULK_SIZE)
+        {
+            std::string payload = std::move(t_ctx.buffer);
+            int32 count = t_ctx.documentCount;
+            t_ctx.buffer.clear();
+            t_ctx.documentCount = 0;
+
+            SendBulk(std::move(payload), count);
+        }
+    }
+    
+    void ElasticClient::IndexPacket(Reader::PktHeader const& header, char const* opcodeName, uint32 build, uint32 pktNumber,
+        json const& pktData, std::string const& srcFile, std::string const& fileId)
+    {
+        auto it = _extractors.find(opcodeName);
+        if (it == _extractors.end())
+            return;
+
+        json doc = BuildBaseDocument(header, opcodeName, build, pktNumber, srcFile, fileId);
+
+        if (!it->second(pktData, doc))
+            return;
+
+        BufferDocument(doc, fileId, pktNumber);
     }
 
     void ElasticClient::SendBulk(std::string&& payload, int32 count)
@@ -73,7 +158,7 @@ namespace PktParser::Db
         if (res != CURLE_OK)
         {
             LOG("ES bulk req failed: {}", curl_easy_strerror(res));
-            _totalFailed.fetch_add(1, std::memory_order_relaxed);
+            _totalFailed.fetch_add(count, std::memory_order_relaxed);
             return;
         }
 
@@ -88,93 +173,23 @@ namespace PktParser::Db
             _totalFailed.fetch_add(count, std::memory_order_relaxed);
         }
     }
-    
-    void ElasticClient::IndexPacket(Reader::PktHeader const &header, char const *opcodeName, uint32 build, uint32 pktNumber,
-        json const &pktData, std::string const &srcFile, std::string const &fileId)
+
+    void ElasticClient::FlushThread()
     {
-        bool hasSearchableFields = pktData.contains("SpellID");
-        if (!hasSearchableFields)
+        if (t_ctx.buffer.empty())
             return;
 
-        json doc;
-        doc["build"] = build;
-        doc["file_id"] = fileId;
-        doc["packet_number"] = pktNumber;
-        doc["source_file"] = srcFile;
-        doc["direction"] = Misc::DirectionToString(header.direction);
-        doc["opcode"] = header.opcode;
-        doc["packet_name"] = opcodeName;
-        doc["timestamp"] = static_cast<int64>(header.timestamp * 1000);
+        std::string payload = std::move(t_ctx.buffer);
+        int32 count = t_ctx.documentCount;
+        t_ctx.buffer.clear();
+        t_ctx.documentCount = 0;
 
-        if (pktData.contains("SpellID"))
-            doc["spell_id"] = pktData["SpellID"];
+        SendBulk(std::move(payload), count);
 
-        if (pktData.contains("CastID"))
-            doc["cast_id"] = pktData["CastID"].get<std::string>();
-
-        if (pktData.contains("OriginalCastID"))
-            doc["original_cast_id"] = pktData["OriginalCastID"].get<std::string>();
-
-        if (pktData.contains("CasterGUID"))
-            doc["caster_guid"] = pktData["CasterGUID"].get<std::string>();
-
-        if (pktData.contains("HitTargets"))
+        if (t_ctx.curl)
         {
-            json targetGuids = json::array();
-            for (auto const& target : pktData["HitTargets"])
-                targetGuids.push_back(target["GUID"].get<std::string>());
-            doc["target_guids"] = targetGuids;
+            curl_easy_cleanup(t_ctx.curl);
+            t_ctx.curl = nullptr;
         }
-        
-        if (pktData.contains("HitTargetsCount"))
-            doc["hit_count"] = pktData["HitTargetsCount"];
-
-        if (pktData.contains("MissTargetsCount"))
-            doc["miss_count"] = pktData["MissTargetsCount"];
-        
-        std::string actionLine = R"({"index":{"_index":"wow_packets"}})";
-
-        std::string pendingPayload;
-        int32 pendingCount = 0;
-        {
-            std::lock_guard<std::mutex> lock(_bufferMutex);
-
-            _bulkBuffer += actionLine;
-            _bulkBuffer += '\n';
-            _bulkBuffer += doc.dump();
-            _bulkBuffer += '\n';
-            _documentCount++;
-
-            if (_documentCount >= BULK_SIZE)
-            {
-                pendingPayload = std::move(_bulkBuffer);
-                pendingCount = _documentCount;
-                _bulkBuffer.clear();
-                _documentCount = 0;
-            }
-        }
-
-        if (!pendingPayload.empty())
-            SendBulk(std::move(pendingPayload), pendingCount);
-    }
-
-    void ElasticClient::Flush()
-    {
-        std::string pendingPayload;
-        int32 pendingCount = 0;
-
-        {
-            std::lock_guard<std::mutex> lock(_bufferMutex);
-
-            if (_bulkBuffer.empty())
-                return;
-
-            pendingPayload = std::move(_bulkBuffer);
-            pendingCount = _documentCount;
-            _bulkBuffer.clear();
-            _documentCount = 0;
-        }
-
-        SendBulk(std::move(pendingPayload), pendingCount);
     }
 }

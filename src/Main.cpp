@@ -46,6 +46,8 @@ int main(int argc, char* argv[])
 	
 	try
 	{
+		curl_global_init(CURL_GLOBAL_DEFAULT);
+
 		BuildInfo::Instance().Initialize();
 
 		Database db;
@@ -138,6 +140,7 @@ int main(int argc, char* argv[])
         LOG("DB Stats: {} inserted, {} failed", db.GetTotalInserted(), db.GetTotalFailed());
         LOG("Total time: {}ms ({:.2f} seconds)", stats.TotalTime, stats.TotalTime / 1000.0);
 #endif
+		curl_global_cleanup();
 	}
 	catch (std::exception const& e)
 	{

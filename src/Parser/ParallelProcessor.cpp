@@ -72,6 +72,8 @@ namespace PktParser
                     LOG("Progress: ~{} packets parsed...", parsedCount.load());
             }
         }
+
+        es.FlushThread();
     }
 
     ParallelProcessor::Stats ParallelProcessor::ProcessAllPackets(PktFileReader& reader, Database& db, size_t threadCount /*= 0*/)
@@ -158,7 +160,6 @@ namespace PktParser
         for (auto& worker : workers)
             worker.join();
 
-        es.Flush();
         LOG("ES Stats: {} indexed, {} failed", es.GetTotalIndexed(), es.GetTotalFailed());
 
         auto endTime = std::chrono::high_resolution_clock::now();

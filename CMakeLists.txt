@@ -45,6 +45,8 @@ find_package(fmt REQUIRED)
 find_package(ZLIB REQUIRED)
 find_package(Threads REQUIRED)
 find_package(CURL REQUIRED)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(ZSTD REQUIRED libzstd)
 
 find_library(CASSANDRA_LIBRARY NAMES cassandra REQUIRED)
 find_path(CASSANDRA_INCLUDE_DIR NAMES cassandra.h REQUIRED)
@@ -78,6 +80,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 	${CMAKE_CURRENT_SOURCE_DIR}/src/Parser/Versions
 	${CMAKE_CURRENT_SOURCE_DIR}/src/Parser/Common
 	${CASSANDRA_INCLUDE_DIR}
+	${ZSTD_INCLUDE_DIRS}
 )
 
 # libs
@@ -89,4 +92,5 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 	${ZLIB_LIBRARIES}
 	Threads::Threads
 	CURL::libcurl
+	${ZSTD_LIBRARIES}
 )

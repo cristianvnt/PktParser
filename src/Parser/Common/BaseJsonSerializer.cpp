@@ -10,12 +10,12 @@ using namespace PktParser::Structures::Packed;
 namespace PktParser::Common
 {
     json BaseJsonSerializer::SerializeFullPacket(PktHeader const& header, char const* opcodeName, 
-        uint32 build, uint32 pktNumber, json&& packetData) const
+        uint32 build, uint32 pktNumber, json&& pktData) const
     {
         json j;
         j["Number"] = pktNumber;
         j["Header"] = SerializePacketHead(header, opcodeName, build);
-        j["Data"] = std::move(packetData);
+        j["Data"] = std::move(pktData);
         return j;
     }
     

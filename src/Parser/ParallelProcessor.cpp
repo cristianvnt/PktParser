@@ -25,7 +25,7 @@ namespace PktParser
                 }
 
                 es.IndexPacket(pkt.header, opcodeName, ctx.Build, pkt.pktNumber, *pktDataOpt, srcFile, fileIdStr);
-                db.StorePacket(pkt.header, opcodeName, ctx.Build, pkt.pktNumber, std::move(*pktDataOpt), srcFile, fileId);
+                db.StorePacket(pkt.header, ctx.Build, pkt.pktNumber, std::move(*pktDataOpt), fileId);
 
                 parsedCount.fetch_add(1, std::memory_order_relaxed);
             }
@@ -160,13 +160,14 @@ namespace PktParser
         for (auto& worker : workers)
             worker.join();
 
-        LOG("ES Stats: {} indexed, {} failed", es.GetTotalIndexed(), es.GetTotalFailed());
+        db.StoreFileMetadata(fileId, srcFile, reader.GetBuildVersion(), static_cast<int64>(reader.GetStartTime()), static_cast<uint32>(parsedCount));
 
+        LOG("ES Stats: {} indexed, {} failed", es.GetTotalIndexed(), es.GetTotalFailed());
         auto endTime = std::chrono::high_resolution_clock::now();
 		auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
         double seconds = duration.count() / 1000.0;
-        double dbMB = db.GetTotalBytes() / (1024 * 1024);
-        double esMB = es.GetTotalBytes() / (1024 * 1024);
+        double dbMB = db.GetTotalBytes() / (1024.0 * 1024.0);
+        double esMB = es.GetTotalBytes() / (1024.0 * 1024.0);
         LOG("Cassandra: {:.2f} MB ({:.2f} MB/s)", dbMB, dbMB / seconds);
         LOG("ES: {:.2f} MB ({:.2f} MB/s)", esMB, esMB / seconds);
 

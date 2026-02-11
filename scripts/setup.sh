@@ -11,7 +11,7 @@ sudo apt-get update
 sudo apt-get install -y build-essential gcc-13 g++-13 cmake git wget curl ninja-build
 
 echo "Installing C++ libraries..."
-sudo apt-get install -y libssl-dev zlib1g-dev libuv1-dev libcurl4-openssl-dev libreadline-dev libffi-dev
+sudo apt-get install -y libssl-dev zlib1g-dev libuv1-dev libcurl4-openssl-dev libreadline-dev libffi-dev libzstd-dev
 
 if [ ! -d "/tmp/fmt-build" ]; then
     cd /tmp

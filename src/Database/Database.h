@@ -33,13 +33,11 @@ namespace PktParser::Db
 		CassUuid fileId;
 		int32 bucket;
 		int32 packetNumber;
-		std::string sourceFile;
-		std::string direction;
-		std::string packetName;
+		uint8 direction;
 		int32 packetLen;
 		int32 opcode;
 		int64 timestamp;
-		std::string pktJson;
+		std::vector<uint8> compressedJson;
 
 		CallbackContext* context;
 
@@ -54,12 +52,13 @@ namespace PktParser::Db
 		CassCluster* _cluster;
 		CassSession* _session;
 		CassPrepared* _preparedInsert;
+		CassPrepared* _preparedMetadata;
 
 		std::atomic<size_t> _totalInserted{ 0 };
 		std::atomic<size_t> _totalFailed{ 0 };
 		std::atomic<size_t> _pendingCount{ 0 };
-
 		std::atomic<size_t> _totalBytes{ 0 };
+		std::atomic<size_t> _totalCompressedBytes{ 0 };
 
 		static constexpr size_t MAX_PENDING = 8192;
 
@@ -70,8 +69,8 @@ namespace PktParser::Db
 
 		static void InsertCallback(CassFuture* future, void* data);
 		static void BindInsertStatement(CassStatement* stmt, InsertData const* data);
-
 		static void RetryInsert(InsertData* data);
+		static std::vector<uint8> CompressJson(std::string const& json);
 
 	public:
 		Database();
@@ -79,7 +78,9 @@ namespace PktParser::Db
 
 		CassSession* GetSession() const { return _session; }
 
-		void StorePacket(Reader::PktHeader const& header, char const* opcodeName, uint32 build, uint32 pktNumber, json&& packetData, std::string const& srcFile, CassUuid const& fileId);
+		void StoreFileMetadata(CassUuid const& fileId, std::string const& srcFile, uint32 build, int64 startTime, uint32 pktCount);
+		void StorePacket(Reader::PktHeader const& header, uint32 build, uint32 pktNumber, json&& pktData, CassUuid const& fileId);
+
 		void Flush();
 
 		CassUuid GenerateFileId(uint32 startTime, size_t fileSize);

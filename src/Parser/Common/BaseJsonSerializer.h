@@ -21,7 +21,7 @@ namespace PktParser::Common
         virtual ~BaseJsonSerializer() = default;
         
         json SerializeFullPacket(Reader::PktHeader const& header, char const* opcodeName,
-            uint32 build, uint32 pktNumber, json&& packetData) const;
+            uint32 build, uint32 pktNumber, json&& pktData) const;
         json SerializePacketHead(Reader::PktHeader const& header, char const* opcodeName, uint32 build) const;
 
         // same everywhere (allegedly)

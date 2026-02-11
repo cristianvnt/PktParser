@@ -1,14 +1,20 @@
 CREATE KEYSPACE IF NOT EXISTS wow_packets 
 WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1};
 
+CREATE TABLE IF NOT EXISTS wow_packets.file_metadata (
+    file_id uuid PRIMARY KEY,
+    source_file text,
+    build int,
+    start_time bigint,
+    packet_count int
+);
+
 CREATE TABLE IF NOT EXISTS wow_packets.packets (
     build int,
     file_id uuid,
     bucket int,
     packet_number int,
-    source_file text,
-    direction text,
-    packet_name text,
+    direction tinyint,
     packet_len int,
     opcode int,
     timestamp bigint,

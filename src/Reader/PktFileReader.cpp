@@ -66,21 +66,21 @@ namespace PktParser::Reader
 		{
 			PktHeader header = ParsePacketHeader();
 
-			std::vector<uint8> packetData(header.packetLength);
-			_file.read(reinterpret_cast<char*>(packetData.data()), header.packetLength);
+			std::vector<uint8> pktData(header.packetLength);
+			_file.read(reinterpret_cast<char*>(pktData.data()), header.packetLength);
 
 			if (_file.gcount() != header.packetLength)
 				return std::nullopt;
 
 			if (header.packetLength >= 4)
-				header.opcode = static_cast<uint32>(packetData[0])
-					| (static_cast<uint32>(packetData[1]) << 8)
-					| (static_cast<uint32>(packetData[2]) << 16)
-					| (static_cast<uint32>(packetData[3]) << 24);
+				header.opcode = static_cast<uint32>(pktData[0])
+					| (static_cast<uint32>(pktData[1]) << 8)
+					| (static_cast<uint32>(pktData[2]) << 16)
+					| (static_cast<uint32>(pktData[3]) << 24);
 			else
 				header.opcode = 0;
 			
-			Pkt pkt{ header, std::move(packetData) };
+			Pkt pkt{ header, std::move(pktData) };
 			pkt.pktNumber = _pktNumber;
 			_pktNumber++;
 			return pkt;

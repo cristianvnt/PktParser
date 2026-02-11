@@ -12,6 +12,10 @@ for arg in "$@"; do
         Debug|Release|RelWithDebInfo)
             BUILD_TYPE=$arg
             ;;
+        clean )
+            echo "Cleaning build directory..."
+            rm -rf build
+            ;;
     esac
 done
 

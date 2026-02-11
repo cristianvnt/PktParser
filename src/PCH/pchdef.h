@@ -20,7 +20,7 @@
 #include <cstring>
 
 // third-party
-#include <fmt/core.h>
+#include <fmt/format.h>
 #include <nlohmann/json.hpp>
 #include <pqxx/pqxx>
 

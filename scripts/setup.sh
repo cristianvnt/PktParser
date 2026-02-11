@@ -9,13 +9,23 @@ fi
 echo "Installing build tools..."
 sudo apt-get update
 sudo apt-get install -y build-essential gcc-13 g++-13 cmake git wget curl ninja-build
-sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-13 110
-sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-13 110
-sudo update-alternatives --auto gcc
-sudo update-alternatives --auto g++
 
 echo "Installing C++ libraries..."
-sudo apt-get install -y libfmt-dev libssl-dev zlib1g-dev libuv1-dev libcurl4-openssl-dev libreadline-dev libffi-dev
+sudo apt-get install -y libssl-dev zlib1g-dev libuv1-dev libcurl4-openssl-dev libreadline-dev libffi-dev
+
+if [ ! -d "/tmp/fmt-build" ]; then
+    cd /tmp
+    rm -rf fmt fmt-build
+    git clone https://github.com/fmtlib/fmt.git
+    cd fmt
+    mkdir build && cd build
+    cmake -DCMAKE_BUILD_TYPE=Release ..
+    make -j4
+    sudo make install
+    sudo ldconfig
+    cd /tmp
+    mv fmt fmt-build
+fi
 
 echo "Installing PostgreSQL..."
 sudo apt-get install -y postgresql postgresql-contrib libpq-dev

@@ -55,9 +55,11 @@ namespace PktParser::Db
 		CassSession* _session;
 		CassPrepared* _preparedInsert;
 
-		std::atomic<size_t> _totalInserted{0};
-		std::atomic<size_t> _totalFailed{0};
-		std::atomic<size_t> _pendingCount{0};
+		std::atomic<size_t> _totalInserted{ 0 };
+		std::atomic<size_t> _totalFailed{ 0 };
+		std::atomic<size_t> _pendingCount{ 0 };
+
+		std::atomic<size_t> _totalBytes{ 0 };
 
 		static constexpr size_t MAX_PENDING = 8192;
 
@@ -84,6 +86,7 @@ namespace PktParser::Db
 
 		size_t GetTotalInserted() const { return _totalInserted.load(); }
 		size_t GetTotalFailed() const { return _totalFailed.load(); }
+		size_t GetTotalBytes() const { return _totalBytes.load(); }
 	};
 }
 

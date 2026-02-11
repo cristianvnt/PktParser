@@ -21,7 +21,8 @@ namespace PktParser::Db
 
     ElasticClient::~ElasticClient()
     {
-        LOG("Elasticsearch shutdown: {} indexed, {} failed", _totalIndexed.load(), _totalFailed.load());
+        LOG("Elasticsearch shutdown: {} indexed, {} failed, {:.2f} MB written", _totalIndexed.load(), _totalFailed.load(),
+            _totalBytes.load() / (1024.0 * 1024.0));
     }
 
     CURL* ElasticClient::GetCurl()
@@ -151,6 +152,7 @@ namespace PktParser::Db
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
 
+        _totalBytes.fetch_add(payload.size(), std::memory_order_relaxed);
         CURLcode res = curl_easy_perform(curl);
 
         curl_slist_free_all(headers);

@@ -78,7 +78,8 @@ namespace PktParser::Db
             head = next;
         }
 
-        LOG("Database shutdown complete: {} inserted, {} failed", _totalInserted.load(), _totalFailed.load());
+        LOG("Database shutdown complete: {} inserted, {} failed, {:.2f} MB written", _totalInserted.load(), _totalFailed.load(),
+            _totalBytes.load() / (1024.0 * 1024.0));
     }
 
     InsertData *Database::AcquireInsertData()
@@ -145,6 +146,8 @@ namespace PktParser::Db
             data->timestamp = static_cast<int64>(header.timestamp * 1000);
             data->pktJson = std::move(packetData).dump();
             data->context = &_callbackContext;
+
+            _totalBytes.fetch_add(data->pktJson.size(), std::memory_order_relaxed);
         }
         catch (std::exception const& e)
         {

@@ -22,6 +22,8 @@ namespace PktParser::Db
         
         std::atomic<size_t> _totalIndexed{ 0 };
         std::atomic<size_t> _totalFailed{ 0 };
+
+        std::atomic<size_t> _totalBytes{ 0 };
         
         struct ThreadContext
         {
@@ -56,6 +58,7 @@ namespace PktParser::Db
 
         size_t GetTotalIndexed() const { return _totalIndexed.load(); }
         size_t GetTotalFailed() const { return _totalFailed.load(); }
+        size_t GetTotalBytes() const { return _totalBytes.load(); }
     };
 }
 

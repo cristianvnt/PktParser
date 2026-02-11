@@ -164,6 +164,11 @@ namespace PktParser
 
         auto endTime = std::chrono::high_resolution_clock::now();
 		auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
+        double seconds = duration.count() / 1000.0;
+        double dbMB = db.GetTotalBytes() / (1024 * 1024);
+        double esMB = es.GetTotalBytes() / (1024 * 1024);
+        LOG("Cassandra: {:.2f} MB ({:.2f} MB/s)", dbMB, dbMB / seconds);
+        LOG("ES: {:.2f} MB ({:.2f} MB/s)", esMB, esMB / seconds);
 
         return ParallelProcessor::Stats{ parsedCount.load(), skippedCount.load(), failedCount.load(), static_cast<size_t>(duration.count()) };
     }

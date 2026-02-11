@@ -15,7 +15,7 @@ sudo update-alternatives --auto gcc
 sudo update-alternatives --auto g++
 
 echo "Installing C++ libraries..."
-sudo apt-get install -y libfmt-dev libssl-dev zlib1g-dev libuv1-dev libcurl4-openssl-dev
+sudo apt-get install -y libfmt-dev libssl-dev zlib1g-dev libuv1-dev libcurl4-openssl-dev libreadline-dev libffi-dev
 
 echo "Installing PostgreSQL..."
 sudo apt-get install -y postgresql postgresql-contrib libpq-dev
@@ -57,10 +57,23 @@ fi
 
 echo "Installing Python dependencies..."
 sudo apt-get install -y pipx python3-pip python3-psycopg2 python3-dotenv
+
+if [ ! -d "$HOME/.pyenv" ]; then
+    curl https://pyenv.run | bash
+fi
+
+export PYENV_ROOT="$HOME/.pyenv"
+export PATH="$PYENV_ROOT/bin:$PATH"
+eval "$(pyenv init -)"
+
+pyenv install 3.11.11 -s
+pyenv global 3.11.11
+pipx install cqlsh
+
+sudo rm -f /usr/bin/cqlsh
+export PATH="$HOME/.local/bin:$PATH"
 pipx ensurepath
 
-echo "Installing cqlsh for Python 3.12..."
-pipx install cqlsh
-export PATH="$HOME/.local/bin:$PATH"
-
 echo "Setup complete"
+echo ""
+echo "IMPORTANT: Run 'source ~/.bashrc' or restart terminal for PATH changes."

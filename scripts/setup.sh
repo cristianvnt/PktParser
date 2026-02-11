@@ -54,7 +54,7 @@ if [ ! -d "/tmp/cassandra-cpp-driver" ]; then
 fi
 
 echo "Installing Elasticsearch 9.x..."
-if ! dpkg -l | grep -q elasticsearch; then
+if ! dpkg -l | grep -q '^ii.*elasticsearch'; then
     wget -qO - https://artifacts.elastic.co/GPG-KEY-elasticsearch | sudo gpg --dearmor -o /usr/share/keyrings/elasticsearch-keyring.gpg
     echo "deb [signed-by=/usr/share/keyrings/elasticsearch-keyring.gpg] https://artifacts.elastic.co/packages/9.x/apt stable main" | sudo tee /etc/apt/sources.list.d/elastic-9.x.list
     sudo apt-get update

@@ -6,14 +6,6 @@ if [ "$EUID" -eq 0 ]; then
     exit 1
 fi
 
-if grep -q "systemd=true" /etc/wsl.conf 2>/dev/null || [ ! -f /proc/version ] || ! grep -qi microsoft /proc/version; then
-    echo "Using systemctl"
-    INIT_CMD="sudo systemctl enable --now"
-else
-    echo "WSL detected without systemd, using service"
-    INIT_CMD="sudo service"
-fi
-
 echo "Installing build tools..."
 sudo apt-get update
 sudo apt-get install -y build-essential gcc-13 g++-13 cmake git wget curl ninja-build
@@ -27,7 +19,6 @@ sudo apt-get install -y libfmt-dev libssl-dev zlib1g-dev libuv1-dev libcurl4-ope
 
 echo "Installing PostgreSQL..."
 sudo apt-get install -y postgresql postgresql-contrib libpq-dev
-$INIT_CMD postgresql
 
 echo "Installing Java 17..."
 sudo apt-get install -y openjdk-17-jdk
@@ -38,16 +29,16 @@ echo "deb [signed-by=/etc/apt/keyrings/apache-cassandra.asc] https://debian.cass
 sudo curl -o /etc/apt/keyrings/apache-cassandra.asc https://downloads.apache.org/cassandra/KEYS
 sudo apt-get update
 sudo apt-get install -y cassandra
-$INIT_CMD cassandra
 
 echo "Installing Cassandra C++ driver..."
 if [ ! -d "/tmp/cassandra-cpp-driver" ]; then
     cd /tmp
+    rm -rf cassandra-cpp-driver
     git clone https://github.com/datastax/cpp-driver.git cassandra-cpp-driver
     cd cassandra-cpp-driver
     mkdir build && cd build
     cmake .. -DCMAKE_BUILD_TYPE=Release
-    make -j$(nproc)
+    make -j4
     sudo make install
     sudo ldconfig
 fi
@@ -62,8 +53,6 @@ if ! dpkg -l | grep -q elasticsearch; then
     # security disable for local dev - unnecessary complexity
     sudo sed -i '/^xpack.security.enabled:/d' /etc/elasticsearch/elasticsearch.yml
     echo "xpack.security.enabled: false" | sudo tee -a /etc/elasticsearch/elasticsearch.yml
-
-    $INIT_CMD elasticsearch
 fi
 
 echo "Installing Python dependencies..."

@@ -71,6 +71,12 @@ int main(int argc, char* argv[])
 			LOG("Pkt build {} - Using forced parser: {}", build, parserVersion);
 
 		OpcodeCache::Instance().LoadFromDatabase(parserVersion);
+		if (OpcodeCache::Instance().GetOpcodeCount() == 0)
+		{
+			LOG("SKIP: No opcodes loaded for parser {} - skiping file", parserVersion);
+			curl_global_cleanup();
+			return 0;
+		}
 
 		if (!VersionFactory::IsSupported(build))
         {

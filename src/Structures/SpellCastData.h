@@ -45,12 +45,6 @@ namespace PktParser::Structures
 		CreatureImmunities Immunities;
 	};
 
-	struct SpellHealPrediction
-	{
-		uint32 Points;
-		uint32 Type;
-	};
-
 	struct SpellHitStatus
 	{
 		uint8 Reason = 0;
@@ -74,6 +68,12 @@ namespace PktParser::Structures
 		int32 Cost = 0;
 	};
 #pragma pack(pop)
+
+	struct SpellHealPrediction
+	{
+		uint32 Points;
+		uint32 Type;
+	};
 
 	struct SpellCastData
 	{

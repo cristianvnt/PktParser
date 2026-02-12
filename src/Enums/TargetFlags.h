@@ -1,7 +1,7 @@
 #ifndef TARGET_FLAGS_H
 #define TARGET_FLAGS_H
 
-#include <cstdint>
+#include "Misc/Define.h"
 
 namespace PktParser::Enums
 {

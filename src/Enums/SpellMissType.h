@@ -1,6 +1,8 @@
 #ifndef SPELL_MISS_TYPE_H
 #define SPELL_MISS_TYPE_H
 
+#include "Define.h"
+
 #include <cstdint>
 
 namespace PktParser::Enums

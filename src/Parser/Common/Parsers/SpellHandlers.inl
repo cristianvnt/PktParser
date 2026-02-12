@@ -6,12 +6,14 @@
 #include "Structures/SpellTargetData.h"
 #include "Structures/TargetLocation.h"
 #include "Misc/WowGuid.h"
+#include "Enums/TargetVersions.h"
 #include <nlohmann/json.hpp>
 
 namespace PktParser::Common::Parsers::SpellHandlers
 {
     using BitReader = PktParser::Reader::BitReader;
     using json = nlohmann::json;
+    using SpellTargetVersion = Enums::SpellTargetVersion;
 
     inline Structures::TargetLocation ReadLocation(BitReader& reader)
     {
@@ -24,14 +26,19 @@ namespace PktParser::Common::Parsers::SpellHandlers
         return loc;
     }
 
-    enum class SpellTargetVersion { Base, Housing };
-
     template <SpellTargetVersion V = SpellTargetVersion::Base>
     inline void ParseSpellTargetData(BitReader& reader, Structures::SpellTargetData& targetData)
     {
-        targetData.Flags = reader.ReadUInt32();
-        targetData.Unit = Misc::ReadPackedGuid128(reader);
-        targetData.Item = Misc::ReadPackedGuid128(reader);
+        if constexpr (V < SpellTargetVersion::Base)
+            targetData.Flags = reader.ReadBits(28);
+        else
+            targetData.Flags = reader.ReadUInt32();
+
+        if constexpr (V > SpellTargetVersion::Lower)
+        {
+            targetData.Unit = Misc::ReadPackedGuid128(reader);
+            targetData.Item = Misc::ReadPackedGuid128(reader);
+        }
 
         if constexpr (V >= SpellTargetVersion::Housing)
         {
@@ -46,6 +53,12 @@ namespace PktParser::Common::Parsers::SpellHandlers
         uint32 nameLength = reader.ReadBits(7);
 
         reader.ResetBitReader();
+
+        if constexpr (V < SpellTargetVersion::Base)
+        {
+            targetData.Unit = Misc::ReadPackedGuid128(reader);
+            targetData.Item = Misc::ReadPackedGuid128(reader);
+        }
 
         if (hasSrc)
             targetData.SrcLocation = SpellHandlers::ReadLocation(reader);
@@ -62,7 +75,18 @@ namespace PktParser::Common::Parsers::SpellHandlers
         targetData.Name = reader.ReadWoWString(nameLength);
     };
 
-    template<typename TSerializer, typename ParseTargetDataFunc>
+    template <SpellTargetVersion V>
+    inline void ReadSpellHealPrediction(BitReader& reader, Structures::SpellHealPrediction& healPrediction)
+    {
+        healPrediction.Points = reader.ReadUInt32();
+
+        if constexpr (V > SpellTargetVersion::Lower)
+            healPrediction.Type = reader.ReadUInt32();
+        else
+            healPrediction.Type = reader.ReadUInt8();
+    }
+
+    template<SpellTargetVersion V, typename TSerializer, typename ParseTargetDataFunc>
     inline json ParseSpellCastData(BitReader& reader, TSerializer* serializer, ParseTargetDataFunc parseTargetData)
     {
         Structures::SpellCastData data{};
@@ -75,8 +99,7 @@ namespace PktParser::Common::Parsers::SpellHandlers
         Structures::SpellCastFixedData const* basicInfo = reader.ReadChunk<Structures::SpellCastFixedData>();
         data.FixedData = *basicInfo;
 
-        Structures::SpellHealPrediction const* healPtr = reader.ReadChunk<Structures::SpellHealPrediction>();
-        data.HealPrediction = *healPtr;
+        ReadSpellHealPrediction<V>(reader, data.HealPrediction);
         data.BeaconGUID = Misc::ReadPackedGuid128(reader);
 
         data.HitTargetsCount = reader.ReadBits(16);

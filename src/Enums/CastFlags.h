@@ -1,7 +1,7 @@
 #ifndef CAST_FLAGS_H
 #define CAST_FLAGS_H
 
-#include <cstdint>
+#include "Misc/Define.h"
 
 namespace PktParser::Enums
 {

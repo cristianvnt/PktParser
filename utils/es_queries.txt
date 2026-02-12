@@ -1,0 +1,26 @@
+# total indexed documents
+curl -s "http://localhost:9200/wow_packets/_count?pretty"
+
+# all SPELL_GO for a specific spell
+curl -s "http://localhost:9200/wow_packets/_search?pretty" -H "Content-Type: application/json" -d '{
+  "query": { "term": { "spell_id": X } },
+  "size": 5,
+  "sort": [{ "timestamp": "asc" }]
+}'
+
+# all casts by a specific caster
+curl -s "http://localhost:9200/wow_packets/_search?pretty" -H "Content-Type: application/json" -d '{
+  "query": { "term": { "caster_guid": "GUID HERE" } },
+  "size": 10,
+  "sort": [{ "timestamp": "asc" }]
+}'
+
+# top 10 most-cast spells
+curl -s "http://localhost:9200/wow_packets/_search?pretty" -H "Content-Type: application/json" -d '{
+  "size": 0,
+  "aggs": {
+    "top_spells": {
+      "terms": { "field": "spell_id", "size": 10 }
+    }
+  }
+}'

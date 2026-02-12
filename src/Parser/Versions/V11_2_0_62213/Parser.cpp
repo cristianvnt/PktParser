@@ -10,7 +10,7 @@ using namespace PktParser::Versions;
 using namespace PktParser::Enums;
 using namespace PktParser::Db;
 
-namespace PktParser::Versions::V11_2_5_63506
+namespace PktParser::Versions::V11_2_0_62213
 {
 	Parser::Parser()
 	{
@@ -20,11 +20,11 @@ namespace PktParser::Versions::V11_2_5_63506
 
     json Parser::ParseSpellStart(BitReader &reader)
     {
-        return SpellHandlers::ParseSpellCastData<SpellTargetVersion::Base>(reader, &_serializer, SpellHandlers::ParseSpellTargetData<>);
+        return SpellHandlers::ParseSpellCastData<SpellTargetVersion::Lower>(reader, &_serializer, SpellHandlers::ParseSpellTargetData<Lower>);
     }
 
     json Parser::ParseSpellGo(BitReader& reader)
 	{
-		return SpellHandlers::ParseSpellCastData<SpellTargetVersion::Base>(reader, &_serializer, SpellHandlers::ParseSpellTargetData<>);
+		return SpellHandlers::ParseSpellCastData<SpellTargetVersion::Lower>(reader, &_serializer, SpellHandlers::ParseSpellTargetData<Lower>);
 	}
 }

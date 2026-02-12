@@ -94,7 +94,13 @@ int main(int argc, char* argv[])
 		size_t failedCount = 0;
 		
 		std::string srcFile = reader.GetFilePath();
-		CassUuid fileId = db.GenerateFileId();
+        CassUuid fileId = db.GenerateFileId(reader.GetStartTime(), reader.GetFileSize());
+
+        char uuidStr[CASS_UUID_STRING_LENGTH];
+        cass_uuid_string(fileId, uuidStr);
+        std::string fileIdStr(uuidStr);
+
+		ElasticClient es;
 
 		while (true)
 		{
@@ -114,8 +120,9 @@ int main(int argc, char* argv[])
 					skippedCount++;
 					continue;
 				}
-
-				db.StorePacket(pkt.header, opcodeName, build, pkt.pktNumber, std::move(*pktDataOpt), srcFile, fileId);
+				
+				es.IndexPacket(pkt.header, opcodeName, build, pkt.pktNumber, *pktDataOpt, srcFile, fileIdStr);
+				db.StorePacket(pkt.header, build, pkt.pktNumber, std::move(*pktDataOpt), fileId);
 				parsedCount++;
 
 				if (parsedCount % 10000 == 0)

@@ -2,11 +2,13 @@
 #include "VersionFactory.h"
 #include "Database/BuildInfo.h"
 
+#include "V11_2_0_62213/Parser.h"
 #include "V11_2_5_63506/Parser.h"
 #include "V11_2_7_64632/Parser.h"
 #include "V11_2_7_64877/Parser.h"
 #include "V12_0_0_65390/Parser.h"
 
+#include "V11_2_0_62213/JsonSerializer.h"
 #include "V11_2_5_63506/JsonSerializer.h"
 #include "V11_2_7_64632/JsonSerializer.h"
 #include "V11_2_7_64877/JsonSerializer.h"
@@ -27,7 +29,9 @@ namespace PktParser::Versions
 
         ctx.Patch = mapping->PatchVersion;
 
-        if (mapping->ParserVersion == "V11_2_5_63506")
+        if (mapping->ParserVersion == "V11_2_0_62213")
+            ctx.Parser = new V11_2_0_62213::Parser();
+        else if (mapping->ParserVersion == "V11_2_5_63506")
             ctx.Parser = new V11_2_5_63506::Parser();
         else if (mapping->ParserVersion == "V11_2_7_64632")
             ctx.Parser = new V11_2_7_64632::Parser();

@@ -77,13 +77,10 @@ export PATH="$PYENV_ROOT/bin:$PATH"
 eval "$(pyenv init -)"
 
 pyenv install 3.11.11 -s
-pyenv global 3.11.11
-pipx install cqlsh
-
-sudo rm -f /usr/bin/cqlsh
-export PATH="$HOME/.local/bin:$PATH"
+pipx install cqlsh --python "$PYENV_ROOT/versions/3.11.11/bin/python3"
 pipx ensurepath
+
+sudo ln -sf "$HOME/.local/bin/cqlsh" /usr/local/bin/cqlsh
 
 echo "Setup complete"
 echo ""
-echo "IMPORTANT: Run 'source ~/.bashrc' or restart terminal for PATH changes."

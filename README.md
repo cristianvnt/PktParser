@@ -1,4 +1,4 @@
 # PktParser
-Tool for parsing World of Warcraft packet captures.
+Tool for processing World of Warcraft packet dumps.
 
 Work in progress...

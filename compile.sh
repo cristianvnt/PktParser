@@ -24,6 +24,6 @@ echo "Building: $BUILD_TYPE ($MODE_TEXT mode)"
 
 mkdir -p build && cd build
 cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DSYNC_PARSING=$SYNC_MODE ..
-make -j$(nproc)
+make -j4
 
 echo "Build complete: ./build/PktParser"

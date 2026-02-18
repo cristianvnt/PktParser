@@ -25,13 +25,14 @@ namespace PktParser
         
         static void ProcessBatch(std::vector<Reader::Pkt> const& batch, VersionContext& ctx,
             Db::Database& db, Db::ElasticClient& es, std::string const& srcFile, CassUuid const& fileId, std::string const& fileIdStr,
-            std::atomic<size_t>& parsedCount, std::atomic<size_t>& skippedCount, std::atomic<size_t>& failedCount);
+            std::atomic<size_t>& parsedCount, std::atomic<size_t>& skippedCount, std::atomic<size_t>& failedCount,
+            std::ofstream& csvFile, bool toCSV = false);
             
         static void WorkerThread(std::queue<std::vector<Reader::Pkt>>& batchQ, std::mutex& qMutex,
             std::condition_variable& qCV, std::atomic<bool>& done, VersionContext ctx, Db::Database& db, Db::ElasticClient& es,
             std::string const& srcFile, CassUuid const& fileId, std::string const& fileIdStr,
             std::atomic<size_t>& parsedCount, std::atomic<size_t>& skippedCount, std::atomic<size_t>& failedCount,
-            std::atomic<size_t>& batchesProcessed);
+            std::atomic<size_t>& batchesProcessed, size_t threadNumber, bool toCSV = false);
     public:
         struct Stats
         {
@@ -41,7 +42,7 @@ namespace PktParser
             size_t TotalTime;
         };
 
-        static Stats ProcessAllPackets(Reader::PktFileReader& reader, Db::Database& db, size_t threadCount = 0);
+        static Stats ProcessAllPackets(Reader::PktFileReader& reader, Db::Database& db, size_t threadCount = 0, bool toCSV = false);
     };
 }
 

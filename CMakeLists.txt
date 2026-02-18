@@ -47,6 +47,7 @@ find_package(Threads REQUIRED)
 find_package(CURL REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(ZSTD REQUIRED libzstd)
+find_package(OpenSSL REQUIRED)
 
 find_library(CASSANDRA_LIBRARY NAMES cassandra REQUIRED)
 find_path(CASSANDRA_INCLUDE_DIR NAMES cassandra.h REQUIRED)
@@ -93,4 +94,5 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 	Threads::Threads
 	CURL::libcurl
 	${ZSTD_LIBRARIES}
+	OpenSSL::Crypto
 )

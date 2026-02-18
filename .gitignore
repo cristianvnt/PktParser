@@ -3,6 +3,7 @@
 !.env.example
 *.data
 *.wsp
+csv/
 
 # profiling logs
 perf.data

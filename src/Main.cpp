@@ -27,7 +27,8 @@ int main(int argc, char* argv[])
 
 	std::string pktFilePath = argv[1];
     std::string parserVersion = "";
-    
+    bool toCSV = false;
+
     for (int i = 2; i < argc; i++)
     {
         std::string arg = argv[i];
@@ -36,6 +37,10 @@ int main(int argc, char* argv[])
             parserVersion = argv[i + 1];
             i++;
         }
+		else if (arg == "--export")
+		{
+			toCSV = true;
+		}
     }
 
 #ifdef SYNC_PARSING_MODE
@@ -146,7 +151,7 @@ int main(int argc, char* argv[])
         LOG("DB Stats: {} inserted, {} failed", db.GetTotalInserted(), db.GetTotalFailed());
 		LOG("Total time: {}ms ({:.2f} seconds)", duration.count(), duration.count() / 1000.0);
 #else
-		Stats stats = ParallelProcessor::ProcessAllPackets(reader, db);
+		Stats stats = ParallelProcessor::ProcessAllPackets(reader, db, 0, toCSV);
 
 		LOG(">>>>> PARSE COMPLETE <<<<<");
         LOG("Parsed: {}, Skipped: {}, Failed: {}", stats.ParsedCount, stats.SkippedCount, stats.FailedCount);

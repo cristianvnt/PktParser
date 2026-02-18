@@ -70,20 +70,20 @@ namespace PktParser::Db
 		static void InsertCallback(CassFuture* future, void* data);
 		static void BindInsertStatement(CassStatement* stmt, InsertData const* data);
 		static void RetryInsert(InsertData* data);
-		static std::vector<uint8> CompressJson(std::string const& json);
-
+		
 	public:
 		Database();
 		~Database();
-
+		
 		CassSession* GetSession() const { return _session; }
-
+		
 		void StoreFileMetadata(CassUuid const& fileId, std::string const& srcFile, uint32 build, int64 startTime, uint32 pktCount);
 		void StorePacket(Reader::PktHeader const& header, uint32 build, uint32 pktNumber, json&& pktData, CassUuid const& fileId);
-
+		
 		void Flush();
-
+		
 		CassUuid GenerateFileId(uint32 startTime, size_t fileSize);
+		static std::vector<uint8> CompressJson(std::string const& json);
 
 		size_t GetTotalInserted() const { return _totalInserted.load(); }
 		size_t GetTotalFailed() const { return _totalFailed.load(); }

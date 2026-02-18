@@ -1,5 +1,5 @@
 CREATE KEYSPACE IF NOT EXISTS wow_packets 
-WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1};
+WITH REPLICATION = { 'class': 'NetworkTopologyStrategy', 'replication_factor': 3 };
 
 CREATE TABLE IF NOT EXISTS wow_packets.file_metadata (
     file_id uuid PRIMARY KEY,
@@ -20,4 +20,10 @@ CREATE TABLE IF NOT EXISTS wow_packets.packets (
     timestamp bigint,
     pkt_json blob,
     PRIMARY KEY ((build, file_id, bucket), packet_number)
-) WITH CLUSTERING ORDER BY (packet_number ASC);
+) WITH CLUSTERING ORDER BY (packet_number ASC)
+  AND COMPACTION = { 
+    'class': 'UnifiedCompactionStrategy',
+    'scaling_parameters': 'T4',
+    'target_sstable_size': '1GiB',
+    'base_shard_count': '4'
+  };

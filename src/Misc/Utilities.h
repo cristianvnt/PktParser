@@ -4,6 +4,9 @@
 #include <string>
 #include <ctime>
 #include <fmt/core.h>
+#include <openssl/bio.h>
+#include <openssl/evp.h>
+#include <openssl/buffer.h>
 
 #include "Define.h"
 #include "Enums/Direction.h"
@@ -11,6 +14,25 @@
 
 namespace PktParser::Misc
 {
+	inline std::string Base64Encode(uint8 const* data, size_t len)
+	{
+		BIO* b64 = BIO_new(BIO_f_base64());
+		BIO* mem = BIO_new(BIO_s_mem());
+		b64 = BIO_push(b64, mem);
+
+		BIO_set_flags(b64, BIO_FLAGS_BASE64_NO_NL);
+		BIO_write(b64, data, static_cast<int>(len));
+		BIO_flush(b64);
+
+		BUF_MEM* buffPtr;
+		BIO_get_mem_ptr(b64, &buffPtr);
+
+		std::string result(buffPtr->data, buffPtr->length);
+		BIO_free_all(b64);
+		
+		return result;
+	}
+
 	template<typename T>
 	inline std::string FormatUnixMilliseconds(T value)
 	{

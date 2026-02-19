@@ -53,7 +53,7 @@ namespace PktParser::Db
         doc["direction"] = Misc::DirectionToString(header.direction);
         doc["opcode"] = header.opcode;
         doc["packet_name"] = opcodeName;
-        doc["timestamp"] = static_cast<int64>(header.timestamp * 1000);
+        doc["timestamp"] = static_cast<int64>(header.timestamp);
         return doc;
     }
 
@@ -73,19 +73,17 @@ namespace PktParser::Db
         if (pktData.contains("CasterGUID"))
             doc["caster_guid"] = pktData["CasterGUID"].get<std::string>();
 
-        if (pktData.contains("HitTargets"))
-        {
-            json targetGuids = json::array();
-            for (auto const& target : pktData["HitTargets"])
-                targetGuids.push_back(target["GUID"].get<std::string>());
-            doc["target_guids"] = targetGuids;
-        }
-        
-        if (pktData.contains("HitTargetsCount"))
-            doc["hit_count"] = pktData["HitTargetsCount"];
+        if (pktData.contains("CasterType"))
+            doc["caster_type"] = pktData["CasterType"].get<std::string>();
 
-        if (pktData.contains("MissTargetsCount"))
-            doc["miss_count"] = pktData["MissTargetsCount"];
+        if (pktData.contains("CasterEntry"))
+            doc["caster_entry"] = pktData["CasterEntry"];
+
+        if (pktData.contains("CasterLow"))
+            doc["caster_low"] = pktData["CasterLow"];
+
+        if (pktData.contains("MapID"))
+            doc["map_id"] = pktData["MapID"];
 
         return true;
     }

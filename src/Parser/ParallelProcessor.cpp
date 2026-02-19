@@ -39,8 +39,10 @@ namespace PktParser
                         << static_cast<int>(pkt.header.direction) << ","
                         << (pkt.header.packetLength - 4) << ","
                         << pkt.header.opcode << ","
-                        << static_cast<int64_t>(pkt.header.timestamp * 1000) << ","
+                        << static_cast<int64>(pkt.header.timestamp) << ","
                         << b64 << "\n";
+
+                    es.IndexPacket(pkt.header, opcodeName, ctx.Build, pkt.pktNumber, *pktDataOpt, srcFile, fileIdStr);
                 }
                 else
                 {

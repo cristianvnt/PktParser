@@ -17,13 +17,14 @@ curl -X PUT "http://localhost:9200/wow_packets" -H "Content-Type: application/js
             "packet_name":      { "type": "keyword" },
             "timestamp":        { "type": "date", "format": "epoch_millis" },
             
+            "original_cast_id": { "type": "keyword" },
             "spell_id":         { "type": "integer" },
             "cast_id":          { "type": "keyword" },
-            "original_cast_id": { "type": "keyword" },
             "caster_guid":      { "type": "keyword" },
-            "target_guids":     { "type": "keyword" },
-            "hit_count":        { "type": "integer" },
-            "miss_count":       { "type": "integer" }
+            "caster_type":      { "type": "keyword" },
+            "caster_entry":     { "type": "integer" },
+            "caster_low":       { "type": "long" },
+            "map_id":           { "type": "integer" }
         }
     }
 }'

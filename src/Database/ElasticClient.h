@@ -17,7 +17,7 @@ namespace PktParser::Db
     class ElasticClient
     {
     private:
-        static constexpr int32 BULK_SIZE = 5000;
+        static constexpr int32 BULK_SIZE = 1000;
         std::string _baseURL;
         
         std::atomic<size_t> _totalIndexed{ 0 };

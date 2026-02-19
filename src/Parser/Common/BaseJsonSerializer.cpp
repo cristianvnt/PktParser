@@ -38,6 +38,11 @@ namespace PktParser::Common
 		json j;
 
 		j["CasterGUID"] = data.CasterGUID.ToString();
+		j["CasterType"] = GuidTypeToString(data.CasterGUID.GetType());
+		j["CasterEntry"] = data.CasterGUID.GetEntry();
+		j["CasterLow"] = data.CasterGUID.GetLow();
+		j["MapID"] = data.CasterGUID.GetMapId();
+
 		j["CasterUnit"] = data.CasterUnit.ToString();
 		j["CastID"] = data.CastID.ToString();
 		j["OriginalCastID"] = data.OriginalCastID.ToString();

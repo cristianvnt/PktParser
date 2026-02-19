@@ -3,7 +3,11 @@
 !.env.example
 *.data
 *.wsp
+
 csv/
+tools/sstable/target/
+dependency-reduced-pom.xml
+sstable_output/
 
 # profiling logs
 perf.data

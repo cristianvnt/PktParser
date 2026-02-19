@@ -11,7 +11,8 @@ sudo apt-get update
 sudo apt-get install -y build-essential gcc-13 g++-13 cmake git wget curl ninja-build
 
 echo "Installing C++ libraries..."
-sudo apt-get install -y libssl-dev zlib1g-dev libuv1-dev libcurl4-openssl-dev libreadline-dev libffi-dev libzstd-dev
+sudo apt-get install -y libssl-dev zlib1g-dev libuv1-dev libcurl4-openssl-dev libreadline-dev libffi-dev libzstd-dev \
+    libjsoncpp-dev libc-ares-dev libbrotli-dev
 
 if [ ! -d "/tmp/fmt-build" ]; then
     cd /tmp
@@ -25,6 +26,22 @@ if [ ! -d "/tmp/fmt-build" ]; then
     sudo ldconfig
     cd /tmp
     mv fmt fmt-build
+fi
+
+echo "Installing Drogon web framework..."
+if [ ! -d "/tmp/drogon-build" ]; then
+    cd /tmp
+    rm -rf drogon drogon-build
+    git clone https://github.com/drogonframework/drogon.git
+    cd drogon
+    git submodule update --init
+    mkdir build && cd build
+    cmake .. -DCMAKE_BUILD_TYPE=Release
+    make -j$(nproc)
+    sudo make install
+    sudo ldconfig
+    cd /tmp
+    mv drogon drogon-build
 fi
 
 echo "Installing PostgreSQL..."

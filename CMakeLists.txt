@@ -49,6 +49,15 @@ find_package(PkgConfig REQUIRED)
 pkg_check_modules(ZSTD REQUIRED libzstd)
 find_package(OpenSSL REQUIRED)
 
+list(APPEND CMAKE_PREFIX_PATH /usr/local)
+find_package(Drogon)
+if (Drogon_FOUND)
+	message(STATUS "Drogon found - API server mode enabled")
+	add_compile_definitions(HAS_DROGON)
+else()
+	message(STATUS "Drogon not found - API server mode disabled")
+endif()
+
 find_library(CASSANDRA_LIBRARY NAMES cassandra REQUIRED)
 find_path(CASSANDRA_INCLUDE_DIR NAMES cassandra.h REQUIRED)
 
@@ -96,3 +105,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 	${ZSTD_LIBRARIES}
 	OpenSSL::Crypto
 )
+
+if(Drogon_FOUND)
+    target_link_libraries(${PROJECT_NAME} PRIVATE Drogon::Drogon)
+endif()

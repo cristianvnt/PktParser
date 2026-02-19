@@ -1,0 +1,87 @@
+services:
+  cassandra-head:
+    image: ${CASSANDRA_IMAGE}
+    container_name: cass-head
+    ports:
+      - ${CASSANDRA_PORT}:9042
+      - 7000:7000
+    networks:
+      - cassandra-net
+    environment:
+      - CASSANDRA_CLUSTER_NAME=${CASSANDRA_CLUSTER_NAME}
+      - CASSANDRA_ENDPOINT_SNITCH=GossipingPropertyFileSnitch
+      - CASSANDRA_DC=${CASSANDRA_DC}
+      - CASSANDRA_SEEDS=cassandra-head
+      - MAX_HEAP_SIZE=1G
+      - HEAP_NEWSIZE=256M
+    mem_limit: 2g
+    volumes:
+      - cassandra-node-head:/var/lib/cassandra
+    restart: on-failure
+    healthcheck:
+      test: ["CMD-SHELL", "cqlsh -e 'SELECT now() FROM system.local'"]
+      interval: 30s
+      start_period: 3m
+      timeout: 10s
+      retries: 5
+
+  cassandra-0:
+    image: ${CASSANDRA_IMAGE}
+    container_name: cass-0
+    networks:
+      - cassandra-net
+    environment:
+      - CASSANDRA_CLUSTER_NAME=${CASSANDRA_CLUSTER_NAME}
+      - CASSANDRA_ENDPOINT_SNITCH=GossipingPropertyFileSnitch
+      - CASSANDRA_DC=${CASSANDRA_DC}
+      - CASSANDRA_SEEDS=cassandra-head
+      - MAX_HEAP_SIZE=1G
+      - HEAP_NEWSIZE=256M
+    mem_limit: 2g
+    depends_on:
+      cassandra-head:
+        condition: service_healthy
+    volumes:
+      - cassandra-node-0:/var/lib/cassandra
+    restart: on-failure
+    healthcheck:
+      test: ["CMD-SHELL", "cqlsh -e 'SELECT now() FROM system.local'"]
+      interval: 30s
+      start_period: 3m
+      timeout: 10s
+      retries: 5
+
+  cassandra-1:
+    image: ${CASSANDRA_IMAGE}
+    container_name: cass-1
+    networks:
+      - cassandra-net
+    environment:
+      - CASSANDRA_CLUSTER_NAME=${CASSANDRA_CLUSTER_NAME}
+      - CASSANDRA_ENDPOINT_SNITCH=GossipingPropertyFileSnitch
+      - CASSANDRA_DC=${CASSANDRA_DC}
+      - CASSANDRA_SEEDS=cassandra-head
+      - MAX_HEAP_SIZE=1G
+      - HEAP_NEWSIZE=256M
+    mem_limit: 2g
+    depends_on:
+      cassandra-0:
+        condition: service_healthy
+    volumes:
+      - cassandra-node-1:/var/lib/cassandra
+    restart: on-failure
+    healthcheck:
+      test: ["CMD-SHELL", "cqlsh -e 'SELECT now() FROM system.local'"]
+      interval: 30s
+      start_period: 3m
+      timeout: 10s
+      retries: 5
+
+networks:
+  cassandra-net:
+    driver: bridge
+
+volumes:
+  cassandra-node-head:
+  cassandra-node-0:
+  cassandra-node-1:

@@ -19,6 +19,10 @@ SSTABLE_OUT="./sstable_output"
 
 rm -rf "$CSV_DIR"/*.csv "$SSTABLE_OUT"
 
+# disable refresh for bulk load
+curl -s -X PUT "http://localhost:9200/wow_packets/_settings" \
+    -H "Content-Type: application/json" -d '{"refresh_interval": "-1"}' > /dev/null
+
 echo ">>>>> BULK LOAD PIPELINE <<<<<"
 time {
     echo ">>> Export to CSV <<<"
@@ -32,6 +36,10 @@ time {
     echo ">>> SSTable Loading <<<"
     time sstableloader -d 127.0.0.1 "$SSTABLE_OUT/wow_packets/packets/"
 }
+
+curl -s -X PUT "http://localhost:9200/wow_packets/_settings" \
+    -H "Content-Type: application/json" -d '{"refresh_interval": "5s"}' > /dev/null
+curl -s -X POST "http://localhost:9200/wow_packets/_forcemerge?max_num_segments=1" > /dev/null
 
 echo ""
 echo ">>> DONE YAY <<<"

@@ -135,43 +135,62 @@ namespace PktParser::Db
 
         std::string url = _baseURL + "/_bulk";
 
-        // config curl req
-        curl_easy_reset(curl);
-        curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-        curl_easy_setopt(curl, CURLOPT_POST, 1L);
-        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, payload.c_str());
-        curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, static_cast<long>(payload.size()));
-
-        struct curl_slist* headers = nullptr;
-        headers = curl_slist_append(headers, "Content-Type: application/x-ndjson");
-        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-
-        std::string response;
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
-
-        _totalBytes.fetch_add(payload.size(), std::memory_order_relaxed);
-        CURLcode res = curl_easy_perform(curl);
-
-        curl_slist_free_all(headers);
-
-        if (res != CURLE_OK)
+        for (int attempt = 0; attempt < MAX_RETRIES; ++attempt)
         {
-            LOG("ES bulk req failed: {}", curl_easy_strerror(res));
-            _totalFailed.fetch_add(count, std::memory_order_relaxed);
-            return;
+            if (attempt > 0)
+            {
+                auto delay = std::chrono::seconds(1 << attempt);
+                LOG("ES backpressure (429), retry {}/{} in {}s...", attempt, MAX_RETRIES, delay.count());
+                std::this_thread::sleep_for(delay);
+            }
+
+            // config curl req
+            curl_easy_reset(curl);
+            curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+            curl_easy_setopt(curl, CURLOPT_POST, 1L);
+            curl_easy_setopt(curl, CURLOPT_POSTFIELDS, payload.c_str());
+            curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, static_cast<long>(payload.size()));
+
+            struct curl_slist* headers = nullptr;
+            headers = curl_slist_append(headers, "Content-Type: application/x-ndjson");
+            curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+
+            std::string response;
+            curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+            curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
+
+            if (attempt == 0)
+                _totalBytes.fetch_add(payload.size(), std::memory_order_relaxed);
+
+            CURLcode res = curl_easy_perform(curl);
+            curl_slist_free_all(headers);
+
+            if (res != CURLE_OK)
+            {
+                LOG("ES bulk req failed: {}", curl_easy_strerror(res));
+                _totalFailed.fetch_add(count, std::memory_order_relaxed);
+                return;
+            }
+
+            long httpCode = 0;
+            curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpCode);
+
+            if (httpCode >= 200 && httpCode < 300)
+            {
+                _totalIndexed.fetch_add(count, std::memory_order_relaxed);
+                return;
+            }
+
+            if (httpCode != 429)
+            {
+                LOG("ES bulk response error (HTTP {}): {}", httpCode, response.substr(0, 200));
+                _totalFailed.fetch_add(count, std::memory_order_relaxed);
+                return;
+            }
         }
 
-        long httpCode = 0;
-        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpCode);
-
-        if (httpCode >= 200 && httpCode < 300)
-            _totalIndexed.fetch_add(count, std::memory_order_relaxed);
-        else
-        {
-            LOG("ES bulk respose error (HTTP {}): {}", httpCode, response.substr(0, 200));
-            _totalFailed.fetch_add(count, std::memory_order_relaxed);
-        }
+        LOG("ES bulk failed after {} retries", MAX_RETRIES);
+        _totalFailed.fetch_add(count, std::memory_order_relaxed);
     }
 
     void ElasticClient::FlushThread()

@@ -17,7 +17,8 @@ namespace PktParser::Db
     class ElasticClient
     {
     private:
-        static constexpr int32 BULK_SIZE = 1000;
+        static constexpr int32 BULK_SIZE = 15000;
+        static constexpr int32 MAX_RETRIES = 3;
         std::string _baseURL;
         
         std::atomic<size_t> _totalIndexed{ 0 };
@@ -59,6 +60,7 @@ namespace PktParser::Db
         size_t GetTotalIndexed() const { return _totalIndexed.load(); }
         size_t GetTotalFailed() const { return _totalFailed.load(); }
         size_t GetTotalBytes() const { return _totalBytes.load(); }
+        int32 GetMaxBulk() const { return BULK_SIZE; }
     };
 }
 

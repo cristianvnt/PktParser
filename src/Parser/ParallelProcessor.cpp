@@ -128,6 +128,7 @@ namespace PktParser
         LOG("Processing file '{}' with UUID {}", srcFile, fileIdStr);
 
         ElasticClient es;
+        LOG("Max bulk size: {}", es.GetMaxBulk());
         
         std::queue<std::vector<Pkt>> batchQueue;
         std::mutex queueMutex;

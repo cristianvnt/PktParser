@@ -5,17 +5,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 project(PktParser)
 
-# Parallel parsing by default
-option(SYNC_PARSING "Enable single-threaded parsing" OFF)
-
-if(SYNC_PARSING)
-	add_compile_definitions(SYNC_PARSING_MODE)	
-    message(STATUS "Building in SYNC mode")
-else()
-	add_compile_definitions(PARALLEL_PARSING_MODE)
-	message(STATUS "Building in PARALLEL mode")
-endif()
-
 # ccache
 find_program(CCACHE_PROGRAM ccache)
 if (CCACHE_PROGRAM)

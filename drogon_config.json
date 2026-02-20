@@ -1,0 +1,18 @@
+{
+    "listeners":
+    [
+        {
+            "address": "0.0.0.0",
+            "port": 8080
+        }
+    ],
+    "app": 
+    {
+        "threads_num": 4,
+        "log":
+        {
+            "use_local_time": true,
+            "log_level": "DEBUG"
+        }
+    }
+}

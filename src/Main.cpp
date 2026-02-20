@@ -7,6 +7,10 @@
 #include "Database/BuildInfo.h"
 #include "Database/OpcodeCache.h"
 
+#ifdef HAS_DROGON
+#include <drogon/HttpAppFramework.h>
+#endif
+
 using namespace PktParser;
 using namespace PktParser::Reader;
 using namespace PktParser::Misc;
@@ -21,27 +25,33 @@ int main(int argc, char* argv[])
 
 	if (argc < 2)
 	{
-		LOG("Usage: {} <path-to-pkt-file> [--parser-version V11_2_5_63506]", argv[0]);
+		LOG("Server usage: {} --serve", argv[0]);
+		LOG("Parser usage: {} <path-to-pkt-file> [--parser-version V11_2_5_63506]", argv[0]);
         return 1;
 	}
 
 	std::string pktFilePath = argv[1];
     std::string parserVersion = "";
     bool toCSV = false;
+	bool serveRequested = false;
 
-    for (int i = 2; i < argc; i++)
+	std::string arg = argv[1];
+	if (arg == "--serve")
+		serveRequested = true;
+	else
     {
-        std::string arg = argv[i];
-        if (arg == "--parser-version" && i + 1 < argc)
-        {
-            parserVersion = argv[i + 1];
-            i++;
-        }
-		else if (arg == "--export")
+		for (int i = 2; i < argc; i++)
 		{
-			toCSV = true;
+			arg = argv[i];
+			if (arg == "--parser-version" && i + 1 < argc)
+			{
+				parserVersion = argv[i + 1];
+				i++;
+			}
+			else if (arg == "--export")
+				toCSV = true;
 		}
-    }
+	}
 
 #ifdef SYNC_PARSING_MODE
 	LOG("Running in SYNC mode");
@@ -56,6 +66,33 @@ int main(int argc, char* argv[])
 		BuildInfo::Instance().Initialize();
 
 		Database db;
+
+		if (serveRequested)
+		{
+		#ifdef HAS_DROGON
+			LOG("Drogon server starting on port 8080...");
+			drogon::app().loadConfigFile("drogon_config.json");
+
+			drogon::app().registerHandler("/api/health",
+				[](drogon::HttpRequestPtr const&, std::function<void(drogon::HttpResponsePtr const&)>&& callback)
+				{
+					Json::Value json;
+					json["status"] = "OK";
+					json["service"] = "PktParser API";
+					drogon::HttpResponsePtr res = drogon::HttpResponse::newHttpJsonResponse(json);
+					callback(res);
+				}, { drogon::Get }
+			);
+
+			drogon::app().run();
+			
+			curl_global_cleanup();
+			return 0;
+		#else
+			LOG("Drogon not enabled!");
+        	return 1;
+		#endif
+		}
 
 		PktFileReader reader(pktFilePath.c_str());
 		reader.ParseFileHeader();

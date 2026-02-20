@@ -1,5 +1,7 @@
 #include "pchdef.h"
 #include "ParallelProcessor.h"
+#include "Database/OpcodeCache.h"
+#include "Misc/Utilities.h"
 
 using namespace PktParser::Reader;
 using namespace PktParser::Db;
@@ -8,18 +10,18 @@ using namespace PktParser::Misc;
 
 namespace PktParser
 {
-    void ParallelProcessor::ProcessBatch(std::vector<Pkt> const& batch, VersionContext& ctx,
+    void ParallelProcessor::ProcessBatch(std::vector<Pkt> const& batch, IVersionParser* parser, uint32 build, std::string const& parserVersion,
         Db::Database* db, Db::ElasticClient& es, std::string const& srcFile, CassUuid const& fileId, std::string const& fileIdStr,
         std::atomic<size_t>& parsedCount, std::atomic<size_t>& skippedCount, std::atomic<size_t>& failedCount,
         std::ofstream& csvFile, bool toCSV /*= false*/)
     {
         for (Pkt const& pkt : batch)
         {
-            char const* opcodeName = ctx.Parser->GetOpcodeName(pkt.header.opcode);
+            char const* opcodeName = OpcodeCache::Instance().GetOpcodeName(parserVersion, pkt.header.opcode);
             try
             {
                 BitReader pktReader = pkt.CreateReader();
-                std::optional<json> pktDataOpt = ctx.Parser->ParsePacket(pkt.header.opcode, pktReader);
+                std::optional<json> pktDataOpt = parser->ParsePacket(pkt.header.opcode, pktReader);
                 if (!pktDataOpt)
                 {
                     skippedCount.fetch_add(1, std::memory_order_relaxed);
@@ -30,9 +32,9 @@ namespace PktParser
                 {
                     std::string jsonStr = pktDataOpt->dump();
                     std::vector<uint8> compressed = Misc::CompressJson(jsonStr);
-                    std::string b64 = Base64Encode(compressed.data(), compressed.size());
+                    std::string b64 = Misc::Base64Encode(compressed.data(), compressed.size());
 
-                    csvFile << ctx.Build << ","
+                    csvFile << build << ","
                         << fileIdStr << ","
                         << (pkt.pktNumber / 10000) << ","
                         << pkt.pktNumber << ","
@@ -42,13 +44,13 @@ namespace PktParser
                         << static_cast<int64>(pkt.header.timestamp) << ","
                         << b64 << "\n";
 
-                    es.IndexPacket(pkt.header, opcodeName, ctx.Build, pkt.pktNumber, *pktDataOpt, srcFile, fileIdStr);
+                    es.IndexPacket(pkt.header, opcodeName, build, pkt.pktNumber, *pktDataOpt, srcFile, fileIdStr);
                 }
                 else
                 {
-                    es.IndexPacket(pkt.header, opcodeName, ctx.Build, pkt.pktNumber, *pktDataOpt, srcFile, fileIdStr);
+                    es.IndexPacket(pkt.header, opcodeName, build, pkt.pktNumber, *pktDataOpt, srcFile, fileIdStr);
                     if (db)
-                        db->StorePacket(pkt.header, ctx.Build, pkt.pktNumber, std::move(*pktDataOpt), fileId);
+                        db->StorePacket(pkt.header, build, pkt.pktNumber, std::move(*pktDataOpt), fileId);
                 }
 
                 parsedCount.fetch_add(1, std::memory_order_relaxed);
@@ -61,8 +63,9 @@ namespace PktParser
         }
     }
 
-    void ParallelProcessor::WorkerThread(std::queue<std::vector<Reader::Pkt>>& batchQ, std::mutex& qMutex, std::condition_variable& qCV, std::atomic<bool>& done,
-        VersionContext ctx, Db::Database* db, Db::ElasticClient& es,std::string const& srcFile, CassUuid const& fileId, std::string const& fileIdStr,
+    void ParallelProcessor::WorkerThread(std::queue<std::vector<Reader::Pkt>>& batchQ, std::mutex& qMutex, std::condition_variable& qCV,
+        std::atomic<bool>& done, IVersionParser* parser, uint32 build, std::string const& parserVersion,
+        Db::Database* db, Db::ElasticClient& es,std::string const& srcFile, CassUuid const& fileId, std::string const& fileIdStr,
         std::atomic<size_t>& parsedCount, std::atomic<size_t>& skippedCount, std::atomic<size_t>& failedCount,
         std::atomic<size_t>& batchesProcessed, size_t threadNumber, bool toCSV /*= false*/)
     {
@@ -71,7 +74,7 @@ namespace PktParser
         std::ofstream csvFile;
         if (toCSV)
         {
-            std::string path = fmt::format("csv/pkt_out_{}.csv", threadNumber);
+            std::string path = fmt::format("csv/pkt_{}_{}.csv", fileIdStr, threadNumber);
             csvFile.open(path);
         }
 
@@ -96,7 +99,7 @@ namespace PktParser
 
             if (!batch.empty())
             {
-                ProcessBatch(batch, ctx, db, es, srcFile, fileId, fileIdStr, parsedCount, skippedCount, failedCount, csvFile, toCSV);
+                ProcessBatch(batch, parser, build, parserVersion, db, es, srcFile, fileId, fileIdStr, parsedCount, skippedCount, failedCount, csvFile, toCSV);
                 
                 size_t count = batchesProcessed.fetch_add(1, std::memory_order_relaxed);
                 if (count % LOG_EVERY_N_BATCHES == 0)
@@ -107,7 +110,8 @@ namespace PktParser
         es.FlushThread();
     }
 
-    ParallelProcessor::Stats ParallelProcessor::ProcessAllPackets(PktFileReader& reader, Database* db, size_t threadCount /*= 0*/, bool toCSV /*= false*/)
+    ParallelProcessor::Stats ParallelProcessor::ProcessAllPackets(PktFileReader& reader, IVersionParser* parser,
+        uint32 build, std::string const& parserVersion, Database* db, size_t threadCount /*= 0*/, bool toCSV /*= false*/)
     {
         auto startTime = std::chrono::high_resolution_clock::now();
 
@@ -148,11 +152,9 @@ namespace PktParser
         workers.reserve(threadCount);
         for (size_t i = 0; i < threadCount; ++i)
         {
-            VersionContext ctx = VersionFactory::Create(reader.GetBuildVersion());
             workers.emplace_back(WorkerThread, std::ref(batchQueue), std::ref(queueMutex), std::ref(queueCV), std::ref(done),
-                std::move(ctx), std::ref(db), std::ref(es), std::ref(srcFile), std::ref(fileId), std::ref(fileIdStr),
-                std::ref(parsedCount), std::ref(skippedCount), std::ref(failedCount),
-                std::ref(batchesProcessed), i, toCSV);
+                parser, build, std::ref(parserVersion), std::ref(db), std::ref(es), std::ref(srcFile), std::ref(fileId), std::ref(fileIdStr),
+                std::ref(parsedCount), std::ref(skippedCount), std::ref(failedCount), std::ref(batchesProcessed), i, toCSV);
         }
 
         std::vector<Pkt> currentBatch;

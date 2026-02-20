@@ -27,11 +27,6 @@ namespace PktParser::Common
             return _registry.Dispatch(opcode, reader);
         }
 
-        char const* GetOpcodeName(uint32 opcode) const override
-        {
-            return Db::OpcodeCache::Instance().GetOpcodeName(opcode);
-        }
-
         json ParseAuthChallenge(Reader::BitReader& reader)
         {
             return Parsers::AuthHandlers::ParseAuthChallenge(reader, &_serializer);

@@ -19,17 +19,16 @@ namespace PktParser::Db
     private:
         OpcodeCache() = default;
         
-        bool _loaded = false;
-        std::unordered_map<uint32, OpcodeInfo> _opcodes;
+        std::unordered_map<std::string, std::unordered_map<uint32, OpcodeInfo>> _cache;
 
     public:
         static OpcodeCache& Instance();
 
-        void LoadFromDatabase(std::string const& parserVersion);
-        char const* GetOpcodeName(uint32 opcodeValue) const;
-        
-        bool IsLoaded() const { return _loaded; }
-        size_t GetOpcodeCount() const { return _opcodes.size(); }
+        void EnsureLoaded(std::string const& parserVersion);
+
+        char const* GetOpcodeName(std::string const& parserVersion, uint32 opcodeValue) const;
+        size_t GetOpcodeCount(std::string const& parserVersion) const;
+        bool IsLoaded(std::string const& parserVersion) const;
     };
 }
 

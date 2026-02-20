@@ -9,6 +9,8 @@
 #include <openssl/buffer.h>
 #include <cassandra.h>
 #include <zstd.h>
+#include <filesystem>
+#include <vector>
 
 #include "Define.h"
 #include "Enums/Direction.h"
@@ -16,6 +18,32 @@
 
 namespace PktParser::Misc
 {
+
+	inline std::vector<std::filesystem::path> CollectPktFiles(std::string const& input)
+	{
+		namespace fs = std::filesystem;
+		std::vector<fs::path> files;
+
+		fs::path inputPath(input);
+
+		if (input.ends_with(".pkt"))
+		{
+			if (fs::exists(inputPath))
+				files.push_back(inputPath);
+			return files;
+		}
+
+		if (!fs::is_directory(inputPath))
+			return files;
+
+		for (auto const& entry : fs::directory_iterator(inputPath))
+			if (entry.is_regular_file() && entry.path().extension() == ".pkt")
+				files.push_back(entry.path());
+
+		std::sort(files.begin(), files.end());
+    	return files;
+	}
+
 	inline CassUuid GenerateFileId(uint32 startTime, size_t fileSize)
     {
         std::hash<uint64> hasher;

@@ -37,8 +37,6 @@ time {
     time sstableloader -d 127.0.0.1 "$SSTABLE_OUT/wow_packets/packets/"
 }
 
-rm -rf "$CSV_DIR"/*.csv "$SSTABLE_OUT"
-
 curl -s -X PUT "http://localhost:9200/wow_packets/_settings" \
     -H "Content-Type: application/json" -d '{"refresh_interval": "5s"}' > /dev/null
 curl -s -X POST "http://localhost:9200/wow_packets/_forcemerge?max_num_segments=1" > /dev/null

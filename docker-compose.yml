@@ -9,9 +9,11 @@ services:
       - cassandra-net
     environment:
       - CASSANDRA_CLUSTER_NAME=${CASSANDRA_CLUSTER_NAME}
-      - CASSANDRA_ENDPOINT_SNITCH=GossipingPropertyFileSnitch
-      - CASSANDRA_DC=${CASSANDRA_DC}
       - CASSANDRA_SEEDS=cassandra-head
+      - CASSANDRA_LISTEN_ADDRESS=auto
+      - CASSANDRA_BROADCAST_ADDRESS=cassandra-head
+      - CASSANDRA_DC=${CASSANDRA_DC}
+      - CASSANDRA_ENDPOINT_SNITCH=GossipingPropertyFileSnitch
       - MAX_HEAP_SIZE=${CASSANDRA_HEAP}
       - HEAP_NEWSIZE=${CASSANDRA_NEWGEN}
     mem_limit: ${CASSANDRA_MEM_LIMIT}

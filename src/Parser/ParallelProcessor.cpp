@@ -9,7 +9,7 @@ using namespace PktParser::Misc;
 namespace PktParser
 {
     void ParallelProcessor::ProcessBatch(std::vector<Pkt> const& batch, VersionContext& ctx,
-        Db::Database& db, Db::ElasticClient& es, std::string const& srcFile, CassUuid const& fileId, std::string const& fileIdStr,
+        Db::Database* db, Db::ElasticClient& es, std::string const& srcFile, CassUuid const& fileId, std::string const& fileIdStr,
         std::atomic<size_t>& parsedCount, std::atomic<size_t>& skippedCount, std::atomic<size_t>& failedCount,
         std::ofstream& csvFile, bool toCSV /*= false*/)
     {
@@ -29,7 +29,7 @@ namespace PktParser
                 if (toCSV)
                 {
                     std::string jsonStr = pktDataOpt->dump();
-                    std::vector<uint8> compressed = Database::CompressJson(jsonStr);
+                    std::vector<uint8> compressed = Misc::CompressJson(jsonStr);
                     std::string b64 = Base64Encode(compressed.data(), compressed.size());
 
                     csvFile << ctx.Build << ","
@@ -47,7 +47,8 @@ namespace PktParser
                 else
                 {
                     es.IndexPacket(pkt.header, opcodeName, ctx.Build, pkt.pktNumber, *pktDataOpt, srcFile, fileIdStr);
-                    db.StorePacket(pkt.header, ctx.Build, pkt.pktNumber, std::move(*pktDataOpt), fileId);
+                    if (db)
+                        db->StorePacket(pkt.header, ctx.Build, pkt.pktNumber, std::move(*pktDataOpt), fileId);
                 }
 
                 parsedCount.fetch_add(1, std::memory_order_relaxed);
@@ -61,7 +62,7 @@ namespace PktParser
     }
 
     void ParallelProcessor::WorkerThread(std::queue<std::vector<Reader::Pkt>>& batchQ, std::mutex& qMutex, std::condition_variable& qCV, std::atomic<bool>& done,
-        VersionContext ctx, Db::Database& db, Db::ElasticClient& es,std::string const& srcFile, CassUuid const& fileId, std::string const& fileIdStr,
+        VersionContext ctx, Db::Database* db, Db::ElasticClient& es,std::string const& srcFile, CassUuid const& fileId, std::string const& fileIdStr,
         std::atomic<size_t>& parsedCount, std::atomic<size_t>& skippedCount, std::atomic<size_t>& failedCount,
         std::atomic<size_t>& batchesProcessed, size_t threadNumber, bool toCSV /*= false*/)
     {
@@ -106,7 +107,7 @@ namespace PktParser
         es.FlushThread();
     }
 
-    ParallelProcessor::Stats ParallelProcessor::ProcessAllPackets(PktFileReader& reader, Database& db, size_t threadCount /*= 0*/, bool toCSV /*= false*/)
+    ParallelProcessor::Stats ParallelProcessor::ProcessAllPackets(PktFileReader& reader, Database* db, size_t threadCount /*= 0*/, bool toCSV /*= false*/)
     {
         auto startTime = std::chrono::high_resolution_clock::now();
 
@@ -120,7 +121,7 @@ namespace PktParser
         LOG("Using {} threads", threadCount);
 
         std::string srcFile = reader.GetFilePath();
-        CassUuid fileId = db.GenerateFileId(reader.GetStartTime(), reader.GetFileSize());
+        CassUuid fileId = Misc::GenerateFileId(reader.GetStartTime(), reader.GetFileSize());
 
         char uuidStr[CASS_UUID_STRING_LENGTH];
         cass_uuid_string(fileId, uuidStr);
@@ -194,15 +195,21 @@ namespace PktParser
         for (auto& worker : workers)
             worker.join();
 
-        db.StoreFileMetadata(fileId, srcFile, reader.GetBuildVersion(), static_cast<int64>(reader.GetStartTime()), static_cast<uint32>(parsedCount));
+        if (db)
+            db->StoreFileMetadata(fileId, srcFile, reader.GetBuildVersion(), static_cast<int64>(reader.GetStartTime()), static_cast<uint32>(parsedCount));
 
         LOG("ES Stats: {} indexed, {} failed", es.GetTotalIndexed(), es.GetTotalFailed());
         auto endTime = std::chrono::high_resolution_clock::now();
 		auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
         double seconds = duration.count() / 1000.0;
-        double dbMB = db.GetTotalBytes() / (1024.0 * 1024.0);
+
+        if (db)
+        {
+            double dbMB = db->GetTotalBytes() / (1024.0 * 1024.0);
+            LOG("Cassandra: {:.2f} MB ({:.2f} MB/s)", dbMB, dbMB / seconds);
+        }
+
         double esMB = es.GetTotalBytes() / (1024.0 * 1024.0);
-        LOG("Cassandra: {:.2f} MB ({:.2f} MB/s)", dbMB, dbMB / seconds);
         LOG("ES: {:.2f} MB ({:.2f} MB/s)", esMB, esMB / seconds);
 
         return ParallelProcessor::Stats{ parsedCount.load(), skippedCount.load(), failedCount.load(), static_cast<size_t>(duration.count()) };

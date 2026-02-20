@@ -24,12 +24,12 @@ namespace PktParser
         static constexpr size_t MAX_QED_BATCHES = 3;
         
         static void ProcessBatch(std::vector<Reader::Pkt> const& batch, VersionContext& ctx,
-            Db::Database& db, Db::ElasticClient& es, std::string const& srcFile, CassUuid const& fileId, std::string const& fileIdStr,
+            Db::Database* db, Db::ElasticClient& es, std::string const& srcFile, CassUuid const& fileId, std::string const& fileIdStr,
             std::atomic<size_t>& parsedCount, std::atomic<size_t>& skippedCount, std::atomic<size_t>& failedCount,
             std::ofstream& csvFile, bool toCSV = false);
             
         static void WorkerThread(std::queue<std::vector<Reader::Pkt>>& batchQ, std::mutex& qMutex,
-            std::condition_variable& qCV, std::atomic<bool>& done, VersionContext ctx, Db::Database& db, Db::ElasticClient& es,
+            std::condition_variable& qCV, std::atomic<bool>& done, VersionContext ctx, Db::Database* db, Db::ElasticClient& es,
             std::string const& srcFile, CassUuid const& fileId, std::string const& fileIdStr,
             std::atomic<size_t>& parsedCount, std::atomic<size_t>& skippedCount, std::atomic<size_t>& failedCount,
             std::atomic<size_t>& batchesProcessed, size_t threadNumber, bool toCSV = false);
@@ -42,7 +42,7 @@ namespace PktParser
             size_t TotalTime;
         };
 
-        static Stats ProcessAllPackets(Reader::PktFileReader& reader, Db::Database& db, size_t threadCount = 0, bool toCSV = false);
+        static Stats ProcessAllPackets(Reader::PktFileReader& reader, Db::Database* db, size_t threadCount = 0, bool toCSV = false);
     };
 }
 

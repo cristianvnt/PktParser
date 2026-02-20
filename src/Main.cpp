@@ -65,7 +65,9 @@ int main(int argc, char* argv[])
 
 		BuildInfo::Instance().Initialize();
 
-		Database db;
+		std::optional<Database> db;
+		if (!toCSV)
+			db.emplace();
 
 		if (serveRequested)
 		{
@@ -85,7 +87,7 @@ int main(int argc, char* argv[])
 			);
 
 			drogon::app().run();
-			
+
 			curl_global_cleanup();
 			return 0;
 		#else
@@ -136,7 +138,7 @@ int main(int argc, char* argv[])
 		size_t failedCount = 0;
 		
 		std::string srcFile = reader.GetFilePath();
-        CassUuid fileId = db.GenerateFileId(reader.GetStartTime(), reader.GetFileSize());
+        CassUuid fileId = Misc::GenerateFileId(reader.GetStartTime(), reader.GetFileSize());
 
         char uuidStr[CASS_UUID_STRING_LENGTH];
         cass_uuid_string(fileId, uuidStr);
@@ -188,11 +190,12 @@ int main(int argc, char* argv[])
         LOG("DB Stats: {} inserted, {} failed", db.GetTotalInserted(), db.GetTotalFailed());
 		LOG("Total time: {}ms ({:.2f} seconds)", duration.count(), duration.count() / 1000.0);
 #else
-		Stats stats = ParallelProcessor::ProcessAllPackets(reader, db, 0, toCSV);
+		Stats stats = ParallelProcessor::ProcessAllPackets(reader, db ? &(*db) : nullptr, 0, toCSV);
 
 		LOG(">>>>> PARSE COMPLETE <<<<<");
         LOG("Parsed: {}, Skipped: {}, Failed: {}", stats.ParsedCount, stats.SkippedCount, stats.FailedCount);
-        LOG("DB Stats: {} inserted, {} failed", db.GetTotalInserted(), db.GetTotalFailed());
+		if (db)
+        	LOG("DB Stats: {} inserted, {} failed", db->GetTotalInserted(), db->GetTotalFailed());
         LOG("Total time: {}ms ({:.2f} seconds)", stats.TotalTime, stats.TotalTime / 1000.0);
 #endif
 		curl_global_cleanup();

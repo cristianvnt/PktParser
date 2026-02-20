@@ -150,24 +150,6 @@ namespace PktParser::Db
         cass_future_free(prepareFuture);
     }
 
-    std::vector<uint8> Database::CompressJson(std::string const &json)
-    {
-        size_t maxSize = ZSTD_compressBound(json.size());
-        std::vector<uint8> compressed(maxSize);
-
-        size_t compressedSize = ZSTD_compress(compressed.data(), compressed.size(), json.data(), json.size(), 3);
-
-        if (ZSTD_isError(compressedSize))
-        {
-            LOG("ZSTD compression failed: {}", ZSTD_getErrorName(compressedSize));
-            compressed.assign(json.begin(), json.end());
-            return compressed;
-        }
-
-        compressed.resize(compressedSize);
-        return compressed;
-    }
-
     void Database::StoreFileMetadata(CassUuid const &fileId, std::string const &srcFile, uint32 build, int64 startTime, uint32 pktCount)
     {
         CassStatement* stmt = cass_prepared_bind(_preparedMetadata);
@@ -207,7 +189,7 @@ namespace PktParser::Db
             std::string jsonStr = std::move(pktData).dump();
             _totalBytes.fetch_add(jsonStr.size(), std::memory_order_relaxed);
 
-            data->compressedJson = CompressJson(jsonStr);
+            data->compressedJson = Misc::CompressJson(jsonStr);
             _totalCompressedBytes.fetch_add(data->compressedJson.size(), std::memory_order_relaxed);
 
             data->build = build;
@@ -310,23 +292,6 @@ namespace PktParser::Db
             std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
         LOG("FLUSH Complete: {} inserted, {} failed", _totalInserted.load(), _totalFailed.load());
-    }
-
-    CassUuid Database::GenerateFileId(uint32 startTime, size_t fileSize)
-    {
-        std::hash<uint64> hasher;
-
-        uint64 combined1 = (static_cast<uint64>(startTime) << 32) | static_cast<uint64>(fileSize & 0xFFFFFFFF);
-        uint64 combined2 = (static_cast<uint64>(fileSize) << 32) | static_cast<uint64>(startTime);
-        
-        CassUuid uuid;
-        uuid.time_and_version = hasher(combined1);
-        uuid.clock_seq_and_node = hasher(combined2);
-
-        uuid.time_and_version = (uuid.time_and_version & 0xFFFFFFFFFFFF0FFFULL) | 0x0000000000004000ULL;
-        uuid.clock_seq_and_node = (uuid.clock_seq_and_node & 0x3FFFFFFFFFFFFFFFULL) | 0x8000000000000000ULL;
-
-        return uuid;
     }
 
     void CallbackContext::ReleaseToPool(InsertData *data)

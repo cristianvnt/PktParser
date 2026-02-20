@@ -7,6 +7,8 @@
 #include <openssl/bio.h>
 #include <openssl/evp.h>
 #include <openssl/buffer.h>
+#include <cassandra.h>
+#include <zstd.h>
 
 #include "Define.h"
 #include "Enums/Direction.h"
@@ -14,6 +16,41 @@
 
 namespace PktParser::Misc
 {
+	inline CassUuid GenerateFileId(uint32 startTime, size_t fileSize)
+    {
+        std::hash<uint64> hasher;
+
+        uint64 combined1 = (static_cast<uint64>(startTime) << 32) | static_cast<uint64>(fileSize & 0xFFFFFFFF);
+        uint64 combined2 = (static_cast<uint64>(fileSize) << 32) | static_cast<uint64>(startTime);
+        
+        CassUuid uuid;
+        uuid.time_and_version = hasher(combined1);
+        uuid.clock_seq_and_node = hasher(combined2);
+
+        uuid.time_and_version = (uuid.time_and_version & 0xFFFFFFFFFFFF0FFFULL) | 0x0000000000004000ULL;
+        uuid.clock_seq_and_node = (uuid.clock_seq_and_node & 0x3FFFFFFFFFFFFFFFULL) | 0x8000000000000000ULL;
+
+        return uuid;
+    }
+	
+	inline std::vector<uint8> CompressJson(std::string const& json)
+    {
+        size_t maxSize = ZSTD_compressBound(json.size());
+        std::vector<uint8> compressed(maxSize);
+
+        size_t compressedSize = ZSTD_compress(compressed.data(), compressed.size(), json.data(), json.size(), 3);
+
+        if (ZSTD_isError(compressedSize))
+        {
+            LOG("ZSTD compression failed: {}", ZSTD_getErrorName(compressedSize));
+            compressed.assign(json.begin(), json.end());
+            return compressed;
+        }
+
+        compressed.resize(compressedSize);
+        return compressed;
+    }
+
 	inline std::string Base64Encode(uint8 const* data, size_t len)
 	{
 		BIO* b64 = BIO_new(BIO_f_base64());

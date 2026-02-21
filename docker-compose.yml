@@ -19,6 +19,7 @@ services:
     mem_limit: ${CASSANDRA_MEM_LIMIT}
     volumes:
       - cassandra-node-head:/var/lib/cassandra
+      - ./config/cassandra.yaml:/etc/cassandra/cassandra.yaml
     restart: on-failure
     healthcheck:
       test: ["CMD-SHELL", "cqlsh -e 'SELECT now() FROM system.local'"]

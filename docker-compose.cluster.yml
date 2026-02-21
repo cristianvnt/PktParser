@@ -19,6 +19,7 @@ services:
     mem_limit: ${CASSANDRA_MEM_LIMIT}
     volumes:
       - cassandra-node-head:/var/lib/cassandra
+      - ./config/cassandra.yaml:/etc/cassandra/cassandra.yaml
     restart: on-failure
     healthcheck:
       test: ["CMD-SHELL", "cqlsh -e 'SELECT now() FROM system.local'"]
@@ -47,6 +48,7 @@ services:
         condition: service_healthy
     volumes:
       - cassandra-node-0:/var/lib/cassandra
+      - ./config/cassandra.yaml:/etc/cassandra/cassandra.yaml
     restart: on-failure
     healthcheck:
       test: ["CMD-SHELL", "cqlsh -e 'SELECT now() FROM system.local'"]
@@ -75,6 +77,7 @@ services:
         condition: service_healthy
     volumes:
       - cassandra-node-1:/var/lib/cassandra
+      - ./config/cassandra.yaml:/etc/cassandra/cassandra.yaml
     restart: on-failure
     healthcheck:
       test: ["CMD-SHELL", "cqlsh -e 'SELECT now() FROM system.local'"]

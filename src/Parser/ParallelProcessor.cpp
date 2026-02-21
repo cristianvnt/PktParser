@@ -10,32 +10,55 @@ using namespace PktParser::Misc;
 
 namespace PktParser
 {
-    void ParallelProcessor::ProcessBatch(std::vector<Pkt> const& batch, IVersionParser* parser, uint32 build, std::string const& parserVersion,
-        Db::Database* db, Db::ElasticClient& es, std::string const& srcFile, CassUuid const& fileId, std::string const& fileIdStr,
-        std::atomic<size_t>& parsedCount, std::atomic<size_t>& skippedCount, std::atomic<size_t>& failedCount,
-        std::ofstream& csvFile, bool toCSV /*= false*/)
+    ParallelProcessor::ParallelProcessor(Db::Database* db, size_t threadCount /*= 0*/, bool toCSV /*= false*/)
+        : _db{ db }, _threadCount{ threadCount }, _toCSV{ toCSV }
     {
-        for (Pkt const& pkt : batch)
+        if (toCSV)
+            std::filesystem::create_directories("csv");
+
+        if (threadCount == 0)
         {
-            char const* opcodeName = OpcodeCache::Instance().GetOpcodeName(parserVersion, pkt.header.opcode);
+            _threadCount = std::thread::hardware_concurrency();
+            if (_threadCount == 0)
+                _threadCount = 4;
+        }
+
+        for (size_t i = 0; i < _threadCount; ++i)
+            _workers.emplace_back(&ParallelProcessor::WorkerThread, this, i);
+    }
+
+    ParallelProcessor::~ParallelProcessor()
+    {
+        _done.store(true);
+        _queueCV.notify_all();
+
+        for (auto& worker : _workers)
+            worker.join();
+    }
+
+    void ParallelProcessor::ProcessBatch(BatchWork const& work, Db::ElasticClient& es, std::ofstream& csvFile)
+    {
+        for (Pkt const& pkt : work.Packets)
+        {
+            char const* opcodeName = OpcodeCache::Instance().GetOpcodeName(work.ParserVersion, pkt.header.opcode);
             try
             {
                 BitReader pktReader = pkt.CreateReader();
-                std::optional<json> pktDataOpt = parser->ParsePacket(pkt.header.opcode, pktReader);
+                std::optional<json> pktDataOpt = work.Parser->ParsePacket(pkt.header.opcode, pktReader);
                 if (!pktDataOpt)
                 {
-                    skippedCount.fetch_add(1, std::memory_order_relaxed);
+                    _skippedCount.fetch_add(1, std::memory_order_relaxed);
                     continue;
                 }
 
-                if (toCSV)
+                if (_toCSV)
                 {
                     std::string jsonStr = pktDataOpt->dump();
                     std::vector<uint8> compressed = Misc::CompressJson(jsonStr);
                     std::string b64 = Misc::Base64Encode(compressed.data(), compressed.size());
 
-                    csvFile << build << ","
-                        << fileIdStr << ","
+                    csvFile << work.Build << ","
+                        << work.FileIdStr << ","
                         << (pkt.pktNumber / 10000) << ","
                         << pkt.pktNumber << ","
                         << static_cast<int>(pkt.header.direction) << ","
@@ -44,86 +67,77 @@ namespace PktParser
                         << static_cast<int64>(pkt.header.timestamp) << ","
                         << b64 << "\n";
 
-                    es.IndexPacket(pkt.header, opcodeName, build, pkt.pktNumber, *pktDataOpt, srcFile, fileIdStr);
+                    es.IndexPacket(pkt.header, opcodeName, work.Build, pkt.pktNumber, *pktDataOpt, work.SrcFile, work.FileIdStr);
                 }
                 else
                 {
-                    es.IndexPacket(pkt.header, opcodeName, build, pkt.pktNumber, *pktDataOpt, srcFile, fileIdStr);
-                    if (db)
-                        db->StorePacket(pkt.header, build, pkt.pktNumber, std::move(*pktDataOpt), fileId);
+                    es.IndexPacket(pkt.header, opcodeName, work.Build, pkt.pktNumber, *pktDataOpt, work.SrcFile, work.FileIdStr);
+                    if (_db)
+                        _db->StorePacket(pkt.header, work.Build, pkt.pktNumber, std::move(*pktDataOpt), work.FileId);
                 }
 
-                parsedCount.fetch_add(1, std::memory_order_relaxed);
+                _parsedCount.fetch_add(1, std::memory_order_relaxed);
             }
             catch (std::exception const& e)
             {
                 LOG("Failed to parse packet {} OP {}: {}", pkt.pktNumber, opcodeName, e.what());
-                failedCount.fetch_add(1, std::memory_order_relaxed);
+                _failedCount.fetch_add(1, std::memory_order_relaxed);
             }
         }
     }
 
-    void ParallelProcessor::WorkerThread(std::queue<std::vector<Reader::Pkt>>& batchQ, std::mutex& qMutex, std::condition_variable& qCV,
-        std::atomic<bool>& done, IVersionParser* parser, uint32 build, std::string const& parserVersion,
-        Db::Database* db, Db::ElasticClient& es,std::string const& srcFile, CassUuid const& fileId, std::string const& fileIdStr,
-        std::atomic<size_t>& parsedCount, std::atomic<size_t>& skippedCount, std::atomic<size_t>& failedCount,
-        std::atomic<size_t>& batchesProcessed, size_t threadNumber, bool toCSV /*= false*/)
+    void ParallelProcessor::WorkerThread(size_t threadNumber)
     {
         static constexpr size_t LOG_EVERY_N_BATCHES = 100;
 
+        ElasticClient es;
+
         std::ofstream csvFile;
-        if (toCSV)
+        if (_toCSV)
         {
-            std::string path = fmt::format("csv/pkt_{}_{}.csv", fileIdStr, threadNumber);
+            std::string path = fmt::format("csv/pkt_thread_{}.csv", threadNumber);
             csvFile.open(path);
         }
 
         while (true)
         {
-            std::vector<Pkt> batch;
+            BatchWork work;
 
             {
-                std::unique_lock<std::mutex> lock(qMutex);
-                qCV.wait(lock, [&]{ return !batchQ.empty() || done.load(); });
+                std::unique_lock<std::mutex> lock(_queueMutex);
+                _queueCV.wait(lock, [this]{ return !_batchQueue.empty() || _done.load(); });
 
-                if (batchQ.empty() && done.load())
+                if (_batchQueue.empty() && _done.load())
                     break;
 
-                if (!batchQ.empty())
+                if (!_batchQueue.empty())
                 {
-                    batch = std::move(batchQ.front());
-                    batchQ.pop();
-                    qCV.notify_all();
+                    work = std::move(_batchQueue.front());
+                    _batchQueue.pop();
+                    _queueCV.notify_all();
                 }
             }
 
-            if (!batch.empty())
+            if (!work.Packets.empty())
             {
-                ProcessBatch(batch, parser, build, parserVersion, db, es, srcFile, fileId, fileIdStr, parsedCount, skippedCount, failedCount, csvFile, toCSV);
+                ProcessBatch(work, es, csvFile);
+
+                _batchesCompleted.fetch_add(1, std::memory_order_relaxed);
+                _completionCV.notify_one();
                 
-                size_t count = batchesProcessed.fetch_add(1, std::memory_order_relaxed);
+                size_t count = _batchesProcessed.fetch_add(1, std::memory_order_relaxed);
                 if (count % LOG_EVERY_N_BATCHES == 0)
-                    LOG("Progress: ~{} packets parsed...", parsedCount.load());
+                    LOG("Progress: ~{} packets parsed...", _parsedCount.load());
             }
         }
 
         es.FlushThread();
     }
 
-    ParallelProcessor::Stats ParallelProcessor::ProcessAllPackets(PktFileReader& reader, IVersionParser* parser,
-        uint32 build, std::string const& parserVersion, Database* db, size_t threadCount /*= 0*/, bool toCSV /*= false*/)
+    ParallelProcessor::Stats ParallelProcessor::ProcessFile(PktFileReader& reader, IVersionParser* parser, uint32 build, std::string const& parserVersion)
     {
         auto startTime = std::chrono::high_resolution_clock::now();
-
-        if (threadCount == 0)
-        {
-            threadCount = std::thread::hardware_concurrency();
-            if (threadCount == 0)
-                threadCount = 4;
-        }
-
-        LOG("Using {} threads", threadCount);
-
+        
         std::string srcFile = reader.GetFilePath();
         CassUuid fileId = Misc::GenerateFileId(reader.GetStartTime(), reader.GetFileSize());
 
@@ -132,33 +146,14 @@ namespace PktParser
         std::string fileIdStr(uuidStr);
         LOG("Processing file '{}' with UUID {}", srcFile, fileIdStr);
 
-        ElasticClient es;
-        LOG("Max bulk size: {}", es.GetMaxBulk());
-        
-        std::queue<std::vector<Pkt>> batchQueue;
-        std::mutex queueMutex;
-        std::condition_variable queueCV;
-        std::atomic<bool> done{ false };
+        _parsedCount.store(0);
+        _skippedCount.store(0);
+        _failedCount.store(0);
+        _batchesCompleted.store(0);
+        size_t batchesPushed = 0;
 
-        std::atomic<size_t> parsedCount{0};
-        std::atomic<size_t> skippedCount{0};
-        std::atomic<size_t> failedCount{0};
-        std::atomic<size_t> batchesProcessed{0};
-
-        if (toCSV)
-            std::filesystem::create_directories("csv");
-
-        std::vector<std::thread> workers;
-        workers.reserve(threadCount);
-        for (size_t i = 0; i < threadCount; ++i)
-        {
-            workers.emplace_back(WorkerThread, std::ref(batchQueue), std::ref(queueMutex), std::ref(queueCV), std::ref(done),
-                parser, build, std::ref(parserVersion), std::ref(db), std::ref(es), std::ref(srcFile), std::ref(fileId), std::ref(fileIdStr),
-                std::ref(parsedCount), std::ref(skippedCount), std::ref(failedCount), std::ref(batchesProcessed), i, toCSV);
-        }
-
-        std::vector<Pkt> currentBatch;
-        currentBatch.reserve(BATCH_SIZE);
+        std::vector<Pkt> currentPackets;
+        currentPackets.reserve(BATCH_SIZE);
 
 		while (true)
 		{
@@ -166,54 +161,64 @@ namespace PktParser
             if (!pktOpt.has_value())
                 break;
 
-            currentBatch.push_back(std::move(*pktOpt));
+            currentPackets.push_back(std::move(*pktOpt));
 
-            if (currentBatch.size() >= BATCH_SIZE)
+            if (currentPackets.size() >= BATCH_SIZE)
             {
+                BatchWork work;
+                work.Packets = std::move(currentPackets);
+                work.Parser = parser;
+                work.Build = build;
+                work.ParserVersion = parserVersion;
+                work.SrcFile = srcFile;
+                work.FileId = fileId;
+                work.FileIdStr = fileIdStr;
+
                 {
-                    std::unique_lock<std::mutex> lock(queueMutex);
-                    if (!queueCV.wait_for(lock, std::chrono::seconds(15), [&]{ return batchQueue.size() < MAX_QED_BATCHES; }))
+                    std::unique_lock<std::mutex> lock(_queueMutex);
+                    if (!_queueCV.wait_for(lock, std::chrono::seconds(15), [&]{ return _batchQueue.size() < MAX_QED_BATCHES; }))
                         LOG("WARN: Queue full for 15s!");
                     
-                    batchQueue.push(std::move(currentBatch));
-                    queueCV.notify_one();
+                    _batchQueue.push(std::move(work));
+                    _queueCV.notify_one();
                 }
 
-                currentBatch.clear();
-                currentBatch.reserve(BATCH_SIZE);
+                batchesPushed++;
+                currentPackets.clear();
+                currentPackets.reserve(BATCH_SIZE);
             }
 		}
 
-        if (!currentBatch.empty())
+        if (!currentPackets.empty())
         {
-            std::unique_lock<std::mutex> lock(queueMutex);
-            batchQueue.push(std::move(currentBatch));
-            queueCV.notify_one();
+            BatchWork work;
+            work.Packets = std::move(currentPackets);
+            work.Parser = parser;
+            work.Build = build;
+            work.ParserVersion = parserVersion;
+            work.SrcFile = srcFile;
+            work.FileId = fileId;
+            work.FileIdStr = fileIdStr;
+
+            std::unique_lock<std::mutex> lock(_queueMutex);
+            _batchQueue.push(std::move(work));
+            _queueCV.notify_one();
+            batchesPushed++;
+        }
+        
+        {
+            std::unique_lock<std::mutex> lock(_queueMutex);
+            _completionCV.wait(lock, [this, batchesPushed]{
+                return _batchesCompleted.load(std::memory_order_acquire) >= batchesPushed;
+            });
         }
 
-        done.store(true);
-        queueCV.notify_all();
+        if (_db)
+            _db->StoreFileMetadata(fileId, srcFile, build, static_cast<int64>(reader.GetStartTime()), static_cast<uint32>(_parsedCount.load()));
 
-        for (auto& worker : workers)
-            worker.join();
-
-        if (db)
-            db->StoreFileMetadata(fileId, srcFile, reader.GetBuildVersion(), static_cast<int64>(reader.GetStartTime()), static_cast<uint32>(parsedCount));
-
-        LOG("ES Stats: {} indexed, {} failed", es.GetTotalIndexed(), es.GetTotalFailed());
         auto endTime = std::chrono::high_resolution_clock::now();
 		auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
-        double seconds = duration.count() / 1000.0;
 
-        if (db)
-        {
-            double dbMB = db->GetTotalBytes() / (1024.0 * 1024.0);
-            LOG("Cassandra: {:.2f} MB ({:.2f} MB/s)", dbMB, dbMB / seconds);
-        }
-
-        double esMB = es.GetTotalBytes() / (1024.0 * 1024.0);
-        LOG("ES: {:.2f} MB ({:.2f} MB/s)", esMB, esMB / seconds);
-
-        return ParallelProcessor::Stats{ parsedCount.load(), skippedCount.load(), failedCount.load(), static_cast<size_t>(duration.count()) };
+        return Stats{ _parsedCount.load(), _skippedCount.load(), _failedCount.load(), static_cast<size_t>(duration.count()) };
     }
 }

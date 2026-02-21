@@ -8,6 +8,7 @@ csv/
 tools/sstable/target/
 dependency-reduced-pom.xml
 sstable_output/
+uploads/
 
 # profiling logs
 perf.data

@@ -98,7 +98,11 @@ int main(int argc, char* argv[])
 	LOG("Found {} .pkt file(s) to process", files.size());
 
 	std::unordered_map<std::string, VersionContext> versionCache;
-	Stats totalStats{};
+
+	ParallelProcessor processor(db ? &(*db) : nullptr, 0, toCSV);
+	ParallelProcessor::Stats totalStats{};
+	LOG("Using {} threads", processor.GetThreadCount());
+
     auto globalStart = std::chrono::high_resolution_clock::now();
 
 	for (auto const& filePath : files)
@@ -142,7 +146,7 @@ int main(int argc, char* argv[])
 			}
 
 			VersionContext& ctx = versionCache.at(parserVersion);
-			Stats stats = ParallelProcessor::ProcessAllPackets(reader, ctx.Parser, build, parserVersion, db ? &(*db) : nullptr, 0, toCSV);
+			ParallelProcessor::Stats stats = processor.ProcessFile(reader, ctx.Parser, build, parserVersion);
 
 			LOG("File done — Parsed: {}, Skipped: {}, Failed: {}, Time: {}ms", stats.ParsedCount, stats.SkippedCount, stats.FailedCount, stats.TotalTime);
 

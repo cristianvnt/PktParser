@@ -17,20 +17,6 @@ namespace PktParser
 {
     class ParallelProcessor
     {
-    private:
-        static constexpr size_t BATCH_SIZE = 10000;
-        static constexpr size_t MAX_QED_BATCHES = 3;
-        
-        static void ProcessBatch(std::vector<Reader::Pkt> const& batch, Versions::IVersionParser* parser, uint32 build, std::string const& parserVersion,
-            Db::Database* db, Db::ElasticClient& es, std::string const& srcFile, CassUuid const& fileId, std::string const& fileIdStr,
-            std::atomic<size_t>& parsedCount, std::atomic<size_t>& skippedCount, std::atomic<size_t>& failedCount,
-            std::ofstream& csvFile, bool toCSV = false);
-            
-        static void WorkerThread(std::queue<std::vector<Reader::Pkt>>& batchQ, std::mutex& qMutex,
-            std::condition_variable& qCV, std::atomic<bool>& done, Versions::IVersionParser* parser, uint32 build, std::string const& parserVersion,
-            Db::Database* db, Db::ElasticClient& es, std::string const& srcFile, CassUuid const& fileId, std::string const& fileIdStr,
-            std::atomic<size_t>& parsedCount, std::atomic<size_t>& skippedCount, std::atomic<size_t>& failedCount,
-            std::atomic<size_t>& batchesProcessed, size_t threadNumber, bool toCSV = false);
     public:
         struct Stats
         {
@@ -40,8 +26,46 @@ namespace PktParser
             size_t TotalTime;
         };
 
-        static Stats ProcessAllPackets(Reader::PktFileReader& reader, Versions::IVersionParser* parser, uint32 build, std::string const& parserVersion,
-            Db::Database* db, size_t threadCount = 0, bool toCSV = false);
+    private:
+        static constexpr size_t BATCH_SIZE = 10000;
+        static constexpr size_t MAX_QED_BATCHES = 3;
+
+        struct BatchWork
+        {
+            std::vector<Reader::Pkt> Packets;
+            Versions::IVersionParser* Parser;
+            uint32 Build;
+            std::string ParserVersion;
+            std::string SrcFile;
+            CassUuid FileId;
+            std::string FileIdStr;
+        };
+
+        Db::Database* _db;
+        std::vector<std::thread> _workers;
+        std::queue<BatchWork> _batchQueue;
+        std::mutex _queueMutex;
+        std::condition_variable _queueCV;
+        std::atomic<bool> _done{ false };
+        size_t _threadCount;
+        bool _toCSV;
+
+        std::atomic<size_t> _parsedCount{ 0 };
+        std::atomic<size_t> _skippedCount{ 0 };
+        std::atomic<size_t> _failedCount{ 0 };
+        std::atomic<size_t> _batchesProcessed{ 0 };
+        std::atomic<size_t> _batchesCompleted{ 0 };
+	    std::condition_variable _completionCV;
+        
+        void ProcessBatch(BatchWork const& work, Db::ElasticClient& es, std::ofstream& csvFile);
+        void WorkerThread(size_t threadCount);
+
+    public:
+        ParallelProcessor(Db::Database* db, size_t threadCount = 0, bool toCSV = false);
+        ~ParallelProcessor();
+
+        Stats ProcessFile(Reader::PktFileReader& reader, Versions::IVersionParser* parser, uint32 build, std::string const& parserVersion);
+        size_t GetThreadCount() const { return _threadCount; }
     };
 }
 

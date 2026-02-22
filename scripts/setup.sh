@@ -12,7 +12,7 @@ sudo apt-get install -y build-essential gcc-13 g++-13 cmake git wget curl ninja-
 
 echo "Installing C++ libraries..."
 sudo apt-get install -y libssl-dev zlib1g-dev libuv1-dev libcurl4-openssl-dev libreadline-dev libffi-dev libzstd-dev \
-    libjsoncpp-dev libc-ares-dev libbrotli-dev
+    libjsoncpp-dev libc-ares-dev libbrotli-dev uuid-dev
 
 if [ ! -d "/tmp/fmt-build" ]; then
     cd /tmp
@@ -37,7 +37,7 @@ if [ ! -d "/tmp/drogon-build" ]; then
     git submodule update --init
     mkdir build && cd build
     cmake .. -DCMAKE_BUILD_TYPE=Release
-    make -j$(nproc)
+    make -j4
     sudo make install
     sudo ldconfig
     cd /tmp
@@ -77,7 +77,6 @@ if ! dpkg -l | grep -q '^ii.*elasticsearch'; then
     sudo apt-get update
     sudo apt-get install -y elasticsearch
 
-    # security disable for local dev - unnecessary complexity
     sudo sed -i '/^xpack.security.enabled:/d' /etc/elasticsearch/elasticsearch.yml
     echo "xpack.security.enabled: false" | sudo tee -a /etc/elasticsearch/elasticsearch.yml
 fi
@@ -100,4 +99,3 @@ pipx ensurepath
 sudo ln -sf "$HOME/.local/bin/cqlsh" /usr/local/bin/cqlsh
 
 echo "Setup complete"
-echo ""

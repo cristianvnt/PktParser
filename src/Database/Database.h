@@ -55,6 +55,7 @@ namespace PktParser::Db
 		CassSession* _session;
 		CassPrepared* _preparedInsert;
 		CassPrepared* _preparedMetadata;
+		CassTimestampGen* _timestampGen;
 
 		std::atomic<size_t> _totalInserted{ 0 };
 		std::atomic<size_t> _totalFailed{ 0 };

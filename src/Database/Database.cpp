@@ -11,11 +11,12 @@ namespace PktParser::Db
 {
 
     Database::Database()
-        : _cluster{ nullptr }, _session{ nullptr }, _preparedInsert{ nullptr }, _preparedMetadata{ nullptr }
+        : _cluster{ nullptr }, _session{ nullptr }, _preparedInsert{ nullptr }, _preparedMetadata{ nullptr }, _timestampGen{ nullptr }
     {
         _cluster = cass_cluster_new();
         
-        cass_cluster_set_timestamp_gen(_cluster, cass_timestamp_gen_server_side_new());
+        _timestampGen = cass_timestamp_gen_server_side_new();
+        cass_cluster_set_timestamp_gen(_cluster, _timestampGen);
 
         std::string cassandraHost = Config::GetCassandraHost();
         cass_cluster_set_contact_points(_cluster, cassandraHost.c_str());
@@ -74,6 +75,9 @@ namespace PktParser::Db
 
         cass_session_free(_session);
         cass_cluster_free(_cluster);
+
+        if (_timestampGen)
+            cass_timestamp_gen_free(_timestampGen);
 
         for (InsertData* data : _pool)
             delete data;

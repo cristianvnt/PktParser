@@ -17,7 +17,7 @@ perf_*.txt
 *.perf
 
 # build dirs
-build/
+build*/
 cmake-build-*/
 out/
 

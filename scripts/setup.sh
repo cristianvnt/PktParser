@@ -48,7 +48,7 @@ echo "Installing PostgreSQL..."
 sudo apt-get install -y postgresql postgresql-contrib libpq-dev
 
 echo "Installing Java 17..."
-sudo apt-get install -y openjdk-17-jdk
+sudo apt-get install -y openjdk-17-jdk maven
 
 echo "Installing Cassandra 5.0..."
 sudo rm -f /etc/apt/sources.list.d/cassandra*

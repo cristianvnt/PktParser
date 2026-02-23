@@ -12,7 +12,7 @@
 namespace PktParser::Common::Parsers::SpellHandlers
 {
     using BitReader = PktParser::Reader::BitReader;
-    using json = nlohmann::json;
+    using json = nlohmann::ordered_json;
     using SpellTargetVersion = Enums::SpellTargetVersion;
 
     inline Structures::TargetLocation ReadLocation(BitReader& reader)

@@ -8,7 +8,7 @@
 namespace PktParser::Common::Parsers::WorldStateHandlers
 {
     using BitReader = PktParser::Reader::BitReader;
-    using json = nlohmann::json;
+    using json = nlohmann::ordered_json;
 
     template <typename TSerializer>
     inline json ParseUpdateWorldState(BitReader& reader, TSerializer* serializer)

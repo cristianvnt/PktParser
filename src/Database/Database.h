@@ -7,6 +7,8 @@
 #include <cassandra.h>
 #include <string>
 #include <atomic>
+#include <vector>
+#include <mutex>
 
 namespace PktParser::Db
 {
@@ -20,7 +22,8 @@ namespace PktParser::Db
 		std::atomic<size_t>* totalInserted;
         std::atomic<size_t>* totalFailed;
         std::atomic<size_t>* pendingCount;
-        std::atomic<InsertData*>* poolHead;
+		std::mutex* poolMutex;
+        std::vector<InsertData*>* pool;
         CassPrepared* preparedStmt;
 		CassSession* session;
 
@@ -40,15 +43,14 @@ namespace PktParser::Db
 		std::vector<uint8> compressedJson;
 
 		CallbackContext* context;
-
-		InsertData* next;
 		int32 retryCount{};
 	};
 	
 	class Database
 	{
 	private:
-		std::atomic<InsertData*> _poolHead;
+		std::mutex _poolMutex;
+		std::vector<InsertData*> _pool;
 		CassCluster* _cluster;
 		CassSession* _session;
 		CassPrepared* _preparedInsert;

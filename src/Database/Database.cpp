@@ -11,7 +11,7 @@ namespace PktParser::Db
 {
 
     Database::Database()
-        :_poolHead{ nullptr }, _cluster{ nullptr }, _session{ nullptr }, _preparedInsert{ nullptr }, _preparedMetadata{ nullptr }
+        : _cluster{ nullptr }, _session{ nullptr }, _preparedInsert{ nullptr }, _preparedMetadata{ nullptr }
     {
         _cluster = cass_cluster_new();
         
@@ -50,7 +50,8 @@ namespace PktParser::Db
         _callbackContext.totalInserted = &_totalInserted;
         _callbackContext.totalFailed = &_totalFailed;
         _callbackContext.pendingCount = &_pendingCount;
-        _callbackContext.poolHead = &_poolHead;
+        _callbackContext.poolMutex = &_poolMutex;
+        _callbackContext.pool = &_pool;
         _callbackContext.preparedStmt = _preparedInsert;
         _callbackContext.session = _session;
     }
@@ -74,13 +75,9 @@ namespace PktParser::Db
         cass_session_free(_session);
         cass_cluster_free(_cluster);
 
-        InsertData* head = _poolHead.load();
-        while (head)
-        {
-            InsertData* next = head->next;
-            delete head;
-            head = next;
-        }
+        for (InsertData* data : _pool)
+            delete data;
+        _pool.clear();
 
         double totalMB = _totalBytes.load() / (1024.0 * 1024.0);
         double compressedMB = _totalCompressedBytes.load() / (1024.0 * 1024.0);
@@ -91,17 +88,14 @@ namespace PktParser::Db
 
     InsertData *Database::AcquireInsertData()
     {
-        InsertData* head = _poolHead.load(std::memory_order_acquire);
+        std::lock_guard<std::mutex> lock(_poolMutex);
 
-        while (head)
+        if (!_pool.empty())
         {
-            InsertData* next = head->next;
-
-            if (_poolHead.compare_exchange_weak(head, next, std::memory_order_release, std::memory_order_acquire))
-            {
-                head->retryCount = 0;
-                return head;
-            }
+            InsertData* data = _pool.back();
+            _pool.pop_back();
+            data->retryCount = 0;
+            return data;
         }
 
         return new InsertData();
@@ -296,11 +290,7 @@ namespace PktParser::Db
 
     void CallbackContext::ReleaseToPool(InsertData *data)
     {
-        InsertData* head = poolHead->load(std::memory_order_acquire);
-
-        do
-        {
-            data->next = head;
-        } while (!poolHead->compare_exchange_weak(head, data, std::memory_order_release, std::memory_order_acquire));
+        std::lock_guard<std::mutex> lock(*poolMutex);
+        pool->push_back(data);
     }
 }

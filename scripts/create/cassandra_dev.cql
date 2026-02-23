@@ -1,5 +1,5 @@
 CREATE KEYSPACE IF NOT EXISTS wow_packets 
-WITH REPLICATION = { 'class': 'NetworkTopologyStrategy', 'dc1': 1 };
+WITH REPLICATION = { 'class': 'SimpleStrategy', 'replication_factor': 1 };
 
 CREATE TABLE IF NOT EXISTS wow_packets.file_metadata (
     file_id uuid PRIMARY KEY,

@@ -3,17 +3,16 @@
 
 #include "Misc/Define.h"
 #include "Reader/PktFileReader.h"
+#include "Common/ParseResult.h"
+#include "Common/JsonWriter.h"
 
 #include <string>
 #include <mutex>
 #include <atomic>
 #include <curl/curl.h>
-#include <nlohmann/json.hpp>
 
 namespace PktParser::Db
 {
-    using json = nlohmann::ordered_json;
-
     class ElasticClient
     {
     private:
@@ -34,26 +33,22 @@ namespace PktParser::Db
         };
         static thread_local ThreadContext t_ctx;
 
-        using ExtractorFunc = bool(*)(json const&, json&);
-        static std::unordered_map<std::string_view, ExtractorFunc> const _extractors;
-
         CURL* GetCurl();
         void SendBulk(std::string&& payload, int32 count);
         static size_t WriteCallback(char* ptr, size_t size, size_t nmemb, std::string* data);
 
-        static json BuildBaseDocument(Reader::PktHeader const& header, char const* opcodeName,
+        void BufferDocument(std::string const& docStr, std::string const& fileId, uint32 pktNumber);
+        static void WriteBaseDocument(Common::JsonWriter& doc, Reader::PktHeader const& header, char const* opcodeName,
             uint32 build, uint32 pktNumber, std::string const& srcFile, std::string const& fileId);
         
-        // extractors
-        static bool ExtractSpellFields(json const& pktData, json& doc);
+        static void WriteSpellFields(Common::JsonWriter& doc, Common::SpellSearchFields const& fields);
         
-        void BufferDocument(json& doc, std::string const& fileId, uint32 pktNumber);
     public:
         explicit ElasticClient(std::string const& baseURL = "http://localhost:9200");
         ~ElasticClient();
         
         void IndexPacket(Reader::PktHeader const& header, char const* opcodeName, uint32 build, uint32 pktNumber,
-            json const& pktData, std::string const& srcFile, std::string const& fileId);
+            Common::ParseResult const& result, std::string const& srcFile, std::string const& fileId);
 
         void FlushThread();
 

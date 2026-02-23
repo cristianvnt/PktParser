@@ -2,20 +2,18 @@
 #define IVERSION_PARSER_H
 
 #include "Misc/Define.h"
-#include <nlohmann/json.hpp>
+#include "Common/ParseResult.h"
 #include <optional>
 
 namespace PktParser::Reader { class BitReader; }
 
 namespace PktParser::Versions
 {
-    using json = nlohmann::ordered_json;
-
     class IVersionParser
     {
     public:
         virtual ~IVersionParser() = default;
-        virtual std::optional<json> ParsePacket(uint32 opcode, Reader::BitReader& reader) = 0;
+        virtual std::optional<Common::ParseResult> ParsePacket(uint32 opcode, Reader::BitReader& reader) = 0;
     };
 }
 

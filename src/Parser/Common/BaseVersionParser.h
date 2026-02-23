@@ -21,18 +21,18 @@ namespace PktParser::Common
         {
         }
 
-        std::optional<json> ParsePacket(uint32 opcode, Reader::BitReader& reader) override
+        std::optional<ParseResult> ParsePacket(uint32 opcode, Reader::BitReader& reader) override
         {
             reader.Skip(4);
             return _registry.Dispatch(opcode, reader);
         }
 
-        json ParseAuthChallenge(Reader::BitReader& reader)
+        ParseResult ParseAuthChallenge(Reader::BitReader& reader)
         {
             return Parsers::AuthHandlers::ParseAuthChallenge(reader, &_serializer);
         }
 
-        json ParseUpdateWorldState(Reader::BitReader& reader)
+        ParseResult ParseUpdateWorldState(Reader::BitReader& reader)
         {
             return Parsers::WorldStateHandlers::ParseUpdateWorldState(reader, &_serializer);
         }

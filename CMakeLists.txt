@@ -15,11 +15,6 @@ endif()
 # dependencies
 include(FetchContent)
 
-FetchContent_Declare(json
-	URL https://github.com/nlohmann/json/releases/download/v3.12.0/json.tar.xz
-)
-FetchContent_MakeAvailable(json)
-
 set(BUILD_DOC OFF CACHE BOOL "" FORCE)
 set(BUILD_TEST OFF CACHE BOOL "" FORCE)
 set(SKIP_BUILD_TEST ON CACHE BOOL "" FORCE)
@@ -85,7 +80,6 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 # libs
 target_link_libraries(${PROJECT_NAME} PRIVATE 
 	fmt::fmt
-	nlohmann_json::nlohmann_json
 	pqxx
 	${CASSANDRA_LIBRARY}
 	${ZLIB_LIBRARIES}

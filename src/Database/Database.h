@@ -3,7 +3,6 @@
 
 #include "Reader/PktFileReader.h"
 
-#include <nlohmann/json.hpp>
 #include <cassandra.h>
 #include <string>
 #include <atomic>
@@ -12,8 +11,6 @@
 
 namespace PktParser::Db
 {
-	using json = nlohmann::ordered_json;
-
 	class Database;
 	struct InsertData;
 
@@ -81,7 +78,7 @@ namespace PktParser::Db
 		CassSession* GetSession() const { return _session; }
 		
 		void StoreFileMetadata(CassUuid const& fileId, std::string const& srcFile, uint32 build, int64 startTime, uint32 pktCount);
-		void StorePacket(Reader::PktHeader const& header, uint32 build, uint32 pktNumber, json&& pktData, CassUuid const& fileId);
+		void StorePacket(Reader::PktHeader const& header, uint32 build, uint32 pktNumber, std::string&& jsonStr, CassUuid const& fileId);
 		
 		void Flush();
 

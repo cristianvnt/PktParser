@@ -2,7 +2,7 @@
 #define OPCODE_REGISTRY_H
 
 #include "Misc/Define.h"
-#include <nlohmann/json.hpp>
+#include "ParseResult.h"
 #include <unordered_map>
 #include <optional>
 
@@ -10,14 +10,13 @@ namespace PktParser::Reader{ class BitReader; }
 
 namespace PktParser::Common
 {
-    using json = nlohmann::ordered_json;
     using BitReader = Reader::BitReader;
     
     template <typename TParser>
     class OpcodeRegistry
     {
     public:
-        using HandlerFunc = json (TParser::*)(BitReader&);
+        using HandlerFunc = ParseResult (TParser::*)(BitReader&);
 
         explicit OpcodeRegistry(TParser* parser) : _parser{ parser } {}
 
@@ -31,7 +30,7 @@ namespace PktParser::Common
             _handlers[opcode] = handler;
         }
 
-        std::optional<json> Dispatch(uint32 opcode, BitReader& reader) const
+        std::optional<ParseResult> Dispatch(uint32 opcode, BitReader& reader) const
         {
             typename std::unordered_map<uint32, HandlerFunc>::const_iterator it = _handlers.find(opcode);
             if (it == _handlers.end())

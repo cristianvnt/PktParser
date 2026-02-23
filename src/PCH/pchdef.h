@@ -21,7 +21,6 @@
 
 // third-party
 #include <fmt/format.h>
-#include <nlohmann/json.hpp>
 #include <pqxx/pqxx>
 
 // stable headers

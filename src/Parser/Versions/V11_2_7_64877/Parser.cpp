@@ -6,6 +6,7 @@
 #include "Common/Parsers/SpellHandlers.inl"
 
 using namespace PktParser::Common::Parsers;
+using namespace PktParser::Common;
 using namespace PktParser::Versions;
 using namespace PktParser::Enums;
 using namespace PktParser::Db;
@@ -18,12 +19,12 @@ namespace PktParser::Versions::V11_2_7_64877
         RegisterAllHandlers(this, _registry);
     }
 
-    json Parser::ParseSpellStart(BitReader& reader)
+    Common::ParseResult Parser::ParseSpellStart(BitReader& reader)
 	{
 		return SpellHandlers::ParseSpellCastData<SpellTargetVersion::Housing>(reader, &_serializer, SpellHandlers::ParseSpellTargetData<SpellHandlers::SpellTargetVersion::Housing>);
 	}
 
-	json Parser::ParseSpellGo(BitReader& reader)
+	Common::ParseResult Parser::ParseSpellGo(BitReader& reader)
 	{
 		return SpellHandlers::ParseSpellCastData<SpellTargetVersion::Housing>(reader, &_serializer, SpellHandlers::ParseSpellTargetData<SpellHandlers::SpellTargetVersion::Housing>);
 	}

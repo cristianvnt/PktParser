@@ -3,20 +3,24 @@
 
 #include "Reader/BitReader.h"
 #include "Structures/Packed/AuthChallengeData.h"
+#include "Common/JsonWriter.h"
+#include "Common/ParseResult.h"
 
 namespace PktParser::Common::Parsers::AuthHandlers
 {
     using BitReader = PktParser::Reader::BitReader;
-    using json = nlohmann::ordered_json;
 
     template <typename TSerializer>
-    inline json ParseAuthChallenge(BitReader& reader, TSerializer* serializer)
+    inline ParseResult ParseAuthChallenge(BitReader& reader, TSerializer* serializer)
     {
         reader.ResetBitReader();
         
         Structures::Packed::AuthChallengeData const* authData = reader.ReadChunk<Structures::Packed::AuthChallengeData>();
 
-        return serializer->SerializeAuthChallenge(authData);
+        JsonWriter w(256);
+        serializer->WriteAuthChallenge(w, authData);
+
+        return ParseResult{ w.TakeString(), std::nullopt };
     }
 }
 

@@ -1,6 +1,7 @@
 #ifndef BASE_JSON_SERIALIZER_H
 #define BASE_JSON_SERIALIZER_H
 
+#include "JsonWriter.h"
 #include "Structures/SpellCastData.h"
 #include "Structures/SpellTargetData.h"
 #include "Structures/TargetLocation.h"
@@ -9,32 +10,24 @@
 #include "Reader/PktFileReader.h"
 #include "Misc/Utilities.h"
 #include <fmt/core.h>
-#include <nlohmann/json.hpp>
 
 namespace PktParser::Common
 {
-    using json = nlohmann::ordered_json;
-
     class BaseJsonSerializer
     {
     public:
         virtual ~BaseJsonSerializer() = default;
         
-        json SerializeFullPacket(Reader::PktHeader const& header, char const* opcodeName,
-            uint32 build, uint32 pktNumber, json&& pktData) const;
-        json SerializePacketHead(Reader::PktHeader const& header, char const* opcodeName, uint32 build) const;
+        virtual void WriteSpellData(JsonWriter& w, Structures::SpellCastData const& data) const;
+        virtual void WriteTargetData(JsonWriter& w, Structures::SpellTargetData const& target) const;
 
         // same everywhere (allegedly)
-        static json SerializeAuthChallenge(Structures::Packed::AuthChallengeData const* data);
-        static json SerializeUpdateWorldState(Structures::Packed::WorldStateInfo const* info, bool hidden);
-
-        // commons
-        virtual json SerializeSpellData(Structures::SpellCastData const& data) const;
-        virtual json SerializeTargetData(Structures::SpellTargetData const& target) const;
+        static void WriteAuthChallenge(JsonWriter& w, Structures::Packed::AuthChallengeData const* data);
+        static void WriteUpdateWorldState(JsonWriter& w, Structures::Packed::WorldStateInfo const* info, bool hidden);
 
         // helpers
-        static json SerializeGuidTarget(Misc::WowGuid128 const& guid);
-        static json SerializeTargetLocation(Structures::TargetLocation const& loc);
+        static void WriteGuidTargetFields(JsonWriter& w, Misc::WowGuid128 const& guid);
+        static void WriteTargetLocation(JsonWriter& w, Structures::TargetLocation const& loc);
     };
 }
 #endif

@@ -1,10 +1,10 @@
 #ifndef PARSER_V12_0_0_65390_H
 #define PARSER_V12_0_0_65390_H
 
-#include <unordered_map>
-
 #include "Common/BaseVersionParser.h"
 #include "JsonSerializer.h"
+#include "Common/ParseResult.h"
+#include "Common/JsonWriter.h"
 
 namespace PktParser::Versions::V12_0_0_65390
 {
@@ -14,8 +14,8 @@ namespace PktParser::Versions::V12_0_0_65390
 	{
 	public:
 		Parser();
-		json ParseSpellStart(BitReader& reader);
-        json ParseSpellGo(BitReader& reader);
+		Common::ParseResult ParseSpellStart(BitReader& reader);
+        Common::ParseResult ParseSpellGo(BitReader& reader);
 	};
 }
 

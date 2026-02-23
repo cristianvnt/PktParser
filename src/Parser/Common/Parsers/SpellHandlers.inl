@@ -7,12 +7,12 @@
 #include "Structures/TargetLocation.h"
 #include "Misc/WowGuid.h"
 #include "Enums/TargetVersions.h"
-#include <nlohmann/json.hpp>
+#include "Common/JsonWriter.h"
+#include "Common/ParseResult.h"
 
 namespace PktParser::Common::Parsers::SpellHandlers
 {
     using BitReader = PktParser::Reader::BitReader;
-    using json = nlohmann::ordered_json;
     using SpellTargetVersion = Enums::SpellTargetVersion;
 
     inline Structures::TargetLocation ReadLocation(BitReader& reader)
@@ -87,7 +87,7 @@ namespace PktParser::Common::Parsers::SpellHandlers
     }
 
     template<SpellTargetVersion V, typename TSerializer, typename ParseTargetDataFunc>
-    inline json ParseSpellCastData(BitReader& reader, TSerializer* serializer, ParseTargetDataFunc parseTargetData)
+    inline ParseResult ParseSpellCastData(BitReader& reader, TSerializer* serializer, ParseTargetDataFunc parseTargetData)
     {
         Structures::SpellCastData data{};
 
@@ -149,7 +149,22 @@ namespace PktParser::Common::Parsers::SpellHandlers
         for (uint32 i = 0; i < data.TargetPointsCount; ++i)
             data.TargetPoints[i] = ReadLocation(reader);
 
-        return serializer->SerializeSpellData(data);
+        JsonWriter w(2048);
+        w.BeginObject();
+        serializer->WriteSpellData(w, data);
+        w.EndObject();
+
+        SpellSearchFields fields;
+        fields.spellId = data.FixedData.SpellID;
+        fields.castId = data.CastID.ToString();
+        fields.originalCastId = data.OriginalCastID.ToString();
+        fields.casterGuid = data.CasterGUID.ToString();
+        fields.casterType = Enums::GuidTypeToString(data.CasterGUID.GetType());
+        fields.casterEntry = data.CasterGUID.GetEntry();
+        fields.casterLow = data.CasterGUID.GetLow();
+        fields.mapId = data.CasterGUID.GetMapId();
+
+        return ParseResult{ w.TakeString(), std::move(fields) };
     }
 }
 

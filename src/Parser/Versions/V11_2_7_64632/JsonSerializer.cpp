@@ -8,13 +8,11 @@ using namespace PktParser::Structures::Packed;
 
 namespace PktParser::Versions::V11_2_7_64632
 {
-	json JsonSerializer::SerializeTargetData(SpellTargetData const& target) const
+	void JsonSerializer::WriteTargetData(Common::JsonWriter& w, Structures::SpellTargetData const& target) const
 	{
-		json j = BaseJsonSerializer::SerializeTargetData(target);
+		BaseJsonSerializer::WriteTargetData(w, target);
 
-		j["HousingGUID"] = target.HousingGUID.ToString();
-		j["HousingIsResident"] = target.HousingIsResident;
-
-		return j;
+		w.WriteString("HousingGUID", target.HousingGUID.ToString());
+		w.WriteBool("HousingIsResident", target.HousingIsResident);
 	}
 }

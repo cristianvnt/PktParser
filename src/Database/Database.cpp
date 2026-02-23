@@ -86,11 +86,12 @@ namespace PktParser::Db
         double totalMB = _totalBytes.load() / (1024.0 * 1024.0);
         double compressedMB = _totalCompressedBytes.load() / (1024.0 * 1024.0);
 
-        LOG("Database shutdown complete: {} inserted, {} failed, {:.2f} MB written", _totalInserted.load(), _totalFailed.load(), _totalBytes.load() / (1024.0 * 1024.0));
+        LOG("Database shutdown complete: {} inserted, {} failed, {:.2f} MB written",
+            _totalInserted.load(), _totalFailed.load(), _totalBytes.load() / (1024.0 * 1024.0));
         LOG("Storage: {:.2f} MB raw -> {:.2f} MB compressed", totalMB, compressedMB);
     }
 
-    InsertData *Database::AcquireInsertData()
+    InsertData* Database::AcquireInsertData()
     {
         std::lock_guard<std::mutex> lock(_poolMutex);
 
@@ -148,7 +149,7 @@ namespace PktParser::Db
         cass_future_free(prepareFuture);
     }
 
-    void Database::StoreFileMetadata(CassUuid const &fileId, std::string const &srcFile, uint32 build, int64 startTime, uint32 pktCount)
+    void Database::StoreFileMetadata(CassUuid const& fileId, std::string const& srcFile, uint32 build, int64 startTime, uint32 pktCount)
     {
         CassStatement* stmt = cass_prepared_bind(_preparedMetadata);
 
@@ -173,7 +174,7 @@ namespace PktParser::Db
         cass_statement_free(stmt);
     }
 
-    void Database::StorePacket(Reader::PktHeader const &header, uint32 build, uint32 pktNumber, json &&pktData, CassUuid const &fileId)
+    void Database::StorePacket(Reader::PktHeader const& header, uint32 build, uint32 pktNumber, std::string&& jsonStr, CassUuid const& fileId)
     {
         while (_pendingCount.load(std::memory_order_relaxed) >= MAX_PENDING)
             std::this_thread::sleep_for(std::chrono::microseconds(100));
@@ -184,7 +185,6 @@ namespace PktParser::Db
 
         try
         {
-            std::string jsonStr = std::move(pktData).dump();
             _totalBytes.fetch_add(jsonStr.size(), std::memory_order_relaxed);
 
             data->compressedJson = Misc::CompressJson(jsonStr);
@@ -217,7 +217,7 @@ namespace PktParser::Db
         cass_statement_free(stmt);
     }
 
-    void Database::RetryInsert(InsertData *data)
+    void Database::RetryInsert(InsertData* data)
     {
         CallbackContext* ctx = data->context;
 
@@ -292,7 +292,7 @@ namespace PktParser::Db
         LOG("FLUSH Complete: {} inserted, {} failed", _totalInserted.load(), _totalFailed.load());
     }
 
-    void CallbackContext::ReleaseToPool(InsertData *data)
+    void CallbackContext::ReleaseToPool(InsertData* data)
     {
         std::lock_guard<std::mutex> lock(*poolMutex);
         pool->push_back(data);

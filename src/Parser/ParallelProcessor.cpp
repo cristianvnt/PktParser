@@ -2,11 +2,13 @@
 #include "ParallelProcessor.h"
 #include "Database/OpcodeCache.h"
 #include "Misc/Utilities.h"
+#include "Common/ParseResult.h"
 
 using namespace PktParser::Reader;
 using namespace PktParser::Db;
 using namespace PktParser::Versions;
 using namespace PktParser::Misc;
+using namespace PktParser::Common;
 
 namespace PktParser
 {
@@ -44,8 +46,8 @@ namespace PktParser
             try
             {
                 BitReader pktReader = pkt.CreateReader();
-                std::optional<json> pktDataOpt = work.Parser->ParsePacket(pkt.header.opcode, pktReader);
-                if (!pktDataOpt)
+                std::optional<ParseResult> pktDataOptResult = work.Parser->ParsePacket(pkt.header.opcode, pktReader);
+                if (!pktDataOptResult)
                 {
                     _skippedCount.fetch_add(1, std::memory_order_relaxed);
                     continue;
@@ -53,8 +55,7 @@ namespace PktParser
 
                 if (_toCSV)
                 {
-                    std::string jsonStr = pktDataOpt->dump();
-                    std::vector<uint8> compressed = Misc::CompressJson(jsonStr);
+                    std::vector<uint8> compressed = Misc::CompressJson(pktDataOptResult->json);
                     std::string b64 = Misc::Base64Encode(compressed.data(), compressed.size());
 
                     csvFile << work.Build << ","
@@ -67,13 +68,13 @@ namespace PktParser
                         << static_cast<int64>(pkt.header.timestamp) << ","
                         << b64 << "\n";
 
-                    es.IndexPacket(pkt.header, opcodeName, work.Build, pkt.pktNumber, *pktDataOpt, work.SrcFile, work.FileIdStr);
+                    es.IndexPacket(pkt.header, opcodeName, work.Build, pkt.pktNumber, *pktDataOptResult, work.SrcFile, work.FileIdStr);
                 }
                 else
                 {
-                    es.IndexPacket(pkt.header, opcodeName, work.Build, pkt.pktNumber, *pktDataOpt, work.SrcFile, work.FileIdStr);
+                    es.IndexPacket(pkt.header, opcodeName, work.Build, pkt.pktNumber, *pktDataOptResult, work.SrcFile, work.FileIdStr);
                     if (_db)
-                        _db->StorePacket(pkt.header, work.Build, pkt.pktNumber, std::move(*pktDataOpt), work.FileId);
+                        _db->StorePacket(pkt.header, work.Build, pkt.pktNumber, std::move(pktDataOptResult->json), work.FileId);
                 }
 
                 _parsedCount.fetch_add(1, std::memory_order_relaxed);

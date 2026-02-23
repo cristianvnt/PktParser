@@ -9,205 +9,192 @@ using namespace PktParser::Structures::Packed;
 
 namespace PktParser::Common
 {
-    json BaseJsonSerializer::SerializeFullPacket(PktHeader const& header, char const* opcodeName, 
-        uint32 build, uint32 pktNumber, json&& pktData) const
-    {
-        json j;
-        j["Number"] = pktNumber;
-        j["Header"] = SerializePacketHead(header, opcodeName, build);
-        j["Data"] = std::move(pktData);
-        return j;
-    }
-    
-    json BaseJsonSerializer::SerializePacketHead(PktHeader const& header, char const* opcodeName, uint32 build) const
-    {
-        json j;
-        j["Direction"] = Misc::DirectionToString(header.direction);
-        j["PacketName"] = opcodeName;
-        j["ConnectionIndex"] = header.connectionIndex;
-        j["TickCount"] = header.tickCount;
-        j["Timestamp"] = Misc::FormatUnixMilliseconds(header.timestamp);
-        j["Opcode"] = fmt::format("0x{:06X}", header.opcode);
-        j["Length"] = header.packetLength - 4;
-        j["Build"] = build;
-        return j;
-    }
-
-    json BaseJsonSerializer::SerializeSpellData(SpellCastData const& data) const
+    void BaseJsonSerializer::WriteSpellData(JsonWriter& w, SpellCastData const& data) const
 	{
-		json j;
+		w.WriteString("CasterGUID", data.CasterGUID.ToString());
+		w.WriteString("CasterType", GuidTypeToString(data.CasterGUID.GetType()));
+        w.WriteUInt("CasterEntry", data.CasterGUID.GetEntry());
+        w.WriteUInt("CasterLow", data.CasterGUID.GetLow());
+        w.WriteInt("MapID", data.CasterGUID.GetMapId());
 
-		j["CasterGUID"] = data.CasterGUID.ToString();
-		j["CasterType"] = GuidTypeToString(data.CasterGUID.GetType());
-		j["CasterEntry"] = data.CasterGUID.GetEntry();
-		j["CasterLow"] = data.CasterGUID.GetLow();
-		j["MapID"] = data.CasterGUID.GetMapId();
+		w.WriteString("CasterUnit", data.CasterUnit.ToString());
+        w.WriteString("CastID", data.CastID.ToString());
+        w.WriteString("OriginalCastID", data.OriginalCastID.ToString());
 
-		j["CasterUnit"] = data.CasterUnit.ToString();
-		j["CastID"] = data.CastID.ToString();
-		j["OriginalCastID"] = data.OriginalCastID.ToString();
+		w.WriteInt("SpellID", data.FixedData.SpellID);
+        w.WriteUInt("SpellXSpellVisualID", data.FixedData.Visual.SpellXSpellVisualID);
+        w.WriteUInt("ScriptVisualID", data.FixedData.Visual.ScriptVisualID);
+        w.WriteUInt("CastFlags", data.FixedData.CastFlags);
+        w.WriteUInt("CastFlagsEx", data.FixedData.CastFlagsEx);
+        w.WriteUInt("CastFlagsEx2", data.FixedData.CastFlagsEx2);
+        w.WriteUInt("CastTime", data.FixedData.CastTime);
 
-		j["SpellID"] = data.FixedData.SpellID;
-		j["SpellXSpellVisualID"] = data.FixedData.Visual.SpellXSpellVisualID;
-		j["ScriptVisualID"] = data.FixedData.Visual.ScriptVisualID;
-		j["CastFlags"] = data.FixedData.CastFlags;
-		j["CastFlagsEx"] = data.FixedData.CastFlagsEx;
-		j["CastFlagsEx2"] = data.FixedData.CastFlagsEx2;
-		j["CastTime"] = data.FixedData.CastTime;
+		w.WriteUInt("TravelTime", data.FixedData.MissileTrajectory.TravelTime);
+        w.WriteDouble("Pitch", data.FixedData.MissileTrajectory.Pitch);
 
-		j["TravelTime"] = data.FixedData.MissileTrajectory.TravelTime;
-		j["Pitch"] = data.FixedData.MissileTrajectory.Pitch;
+        w.WriteInt("AmmoDisplayID", data.FixedData.AmmoDisplayID);
+        w.WriteUInt("DestLocSpellCastIndex", data.FixedData.DestLocSpellCastIndex);
+        w.WriteUInt("ImmunitySchool", data.FixedData.Immunities.School);
+        w.WriteUInt("ImmunityValue", data.FixedData.Immunities.Value);
 
-		j["AmmoDisplayID"] = data.FixedData.AmmoDisplayID;
-		j["DestLocSpellCastIndex"] = data.FixedData.DestLocSpellCastIndex;
-		j["ImmunitySchool"] = data.FixedData.Immunities.School;
-		j["ImmunityValue"] = data.FixedData.Immunities.Value;
+        w.WriteUInt("HealPoints", data.HealPrediction.Points);
+        w.WriteUInt("HealType", data.HealPrediction.Type);
+        w.WriteString("BeaconGUID", data.BeaconGUID.ToString());
 
-		j["HealPoints"] = data.HealPrediction.Points;
-		j["HealType"] = data.HealPrediction.Type;
-		j["BeaconGUID"] = data.BeaconGUID.ToString();
+        w.WriteUInt("HitTargetsCount", data.HitTargetsCount);
+        w.WriteUInt("MissTargetsCount", data.MissTargetsCount);
+        w.WriteUInt("HitStatusCount", data.HitStatusCount);
+        w.WriteUInt("MissStatusCount", data.MissStatusCount);
+        w.WriteUInt("RemainingPowerCount", data.RemainingPowerCount);
+        w.WriteBool("HasRuneData", data.HasRuneData);
+        w.WriteUInt("TargetPointsCount", data.TargetPointsCount);
 
-		j["HitTargetsCount"] = data.HitTargetsCount;
-		j["MissTargetsCount"] = data.MissTargetsCount;
-		j["HitStatusCount"] = data.HitStatusCount;
-		j["MissStatusCount"] = data.MissStatusCount;
-		j["RemainingPowerCount"] = data.RemainingPowerCount;
-		j["HasRuneData"] = data.HasRuneData;
-		j["TargetPointsCount"] = data.TargetPointsCount;
+		w.Key("Target");
+		WriteTargetData(w, data.TargetData);
 
-		j["Target"] = SerializeTargetData(data.TargetData);
+		w.Key("HitTargets");
+        w.BeginArray();
+        for (size_t i = 0; i < data.HitTargets.size(); ++i)
+        {
+            w.BeginObject();
+            WriteGuidTargetFields(w, data.HitTargets[i]);
+            if (i < data.HitStatus.size())
+                w.WriteUInt("HitStatus", data.HitStatus[i].Reason);
+            w.EndObject();
+        }
+        w.EndArray();
 
-		json hitArray = json::array();
-		hitArray.get_ref<json::array_t&>().reserve(data.HitTargets.size());
-		for (size_t i = 0; i < data.HitTargets.size(); ++i)
-		{
-			json t = SerializeGuidTarget(data.HitTargets[i]);
-			if (i < data.HitStatus.size())
-				t["HitStatus"] = data.HitStatus[i].Reason;
-			hitArray.emplace_back(std::move(t));
-		}
-		j["HitTargets"] = std::move(hitArray);
-
-		json missArray = json::array();
-		missArray.get_ref<json::array_t&>().reserve(data.MissTargets.size());
-		for (size_t i = 0; i < data.MissTargets.size(); ++i)
-		{
-			json t = SerializeGuidTarget(data.MissTargets[i]);
-			if (i < data.MissStatus.size())
-			{
-				t["MissReason"] = data.MissStatus[i].MissReason;
-				t["ReflectStatus"] = data.MissStatus[i].ReflectStatus;
-			}
-			missArray.emplace_back(std::move(t));
-		}
-		j["MissTargets"] = std::move(missArray);
+		w.Key("MissTargets");
+        w.BeginArray();
+        for (size_t i = 0; i < data.MissTargets.size(); ++i)
+        {
+            w.BeginObject();
+            WriteGuidTargetFields(w, data.MissTargets[i]);
+            if (i < data.MissStatus.size())
+            {
+                w.WriteUInt("MissReason", data.MissStatus[i].MissReason);
+                w.WriteUInt("ReflectStatus", data.MissStatus[i].ReflectStatus);
+            }
+            w.EndObject();
+        }
+        w.EndArray();
 
 		if (!data.RemainingPower.empty())
-		{
-			json powerArray = json::array();
-			powerArray.get_ref<json::array_t&>().reserve(data.RemainingPower.size());
-			for (const auto& power : data.RemainingPower)
-			{
-				json powerObj;
-				powerObj["Cost"] = power.Cost;
-				powerObj["Type"] = power.Type;
-				powerArray.emplace_back(std::move(powerObj));
-			}
-			j["RemainingPower"] = std::move(powerArray);
-		}
+        {
+            w.Key("RemainingPower");
+            w.BeginArray();
+            for (auto const& power : data.RemainingPower)
+            {
+                w.BeginObject();
+                w.WriteInt("Cost", power.Cost);
+                w.WriteInt("Type", power.Type);
+                w.EndObject();
+            }
+            w.EndArray();
+        }
     	
 		if (data.HasRuneData)
-		{
-			json runeData;
-			runeData["Start"] = data.Runes.Start;
-			runeData["Count"] = data.Runes.Count;
-			runeData["CooldownCount"] = data.RuneCooldowns.size();
-			runeData["Cooldowns"] = data.RuneCooldowns;
-			j["RuneData"] = std::move(runeData);
-		}
+        {
+            w.Key("RuneData");
+            w.BeginObject();
+            w.WriteUInt("Start", data.Runes.Start);
+            w.WriteUInt("Count", data.Runes.Count);
+            w.WriteUInt("CooldownCount", data.RuneCooldowns.size());
+            w.Key("Cooldowns");
+            w.BeginArray();
+            for (float cd : data.RuneCooldowns)
+                w.Double(cd);
+            w.EndArray();
+            w.EndObject();
+        }
 
-		if (!data.TargetPoints.empty())
-		{
-			json pointsArray = json::array();
-			pointsArray.get_ref<json::array_t&>().reserve(data.TargetPoints.size());
-			for (auto const& point : data.TargetPoints)
-				pointsArray.emplace_back(SerializeTargetLocation(point));
-			j["TargetPoints"] = std::move(pointsArray);
-		}
-
-		return j;
+        if (!data.TargetPoints.empty())
+        {
+            w.Key("TargetPoints");
+            w.BeginArray();
+            for (auto const& point : data.TargetPoints)
+                WriteTargetLocation(w, point);
+            w.EndArray();
+        }
 	}
 
-    json BaseJsonSerializer::SerializeTargetData(SpellTargetData const& target) const
-	{
-        json j;
-        j["Flags"] = target.Flags;
-        j["FlagsString"] = GetTargetFlagName(target.Flags);
-        j["Unit"] = target.Unit.ToString();
-        j["Item"] = target.Item.ToString();
+    void BaseJsonSerializer::WriteTargetData(JsonWriter& w, SpellTargetData const& target) const
+    {
+        w.BeginObject();
+        w.WriteUInt("Flags", target.Flags);
+        w.WriteString("FlagsString", GetTargetFlagName(target.Flags));
+        w.WriteString("Unit", target.Unit.ToString());
+        w.WriteString("Item", target.Item.ToString());
 
         if (target.SrcLocation)
-            j["SrcLocation"] = SerializeTargetLocation(*target.SrcLocation);
+        {
+            w.Key("SrcLocation");
+            WriteTargetLocation(w, *target.SrcLocation);
+        }
 
         if (target.DstLocation)
-            j["DstLocation"] = SerializeTargetLocation(*target.DstLocation);
+        {
+			w.Key("DstLocation");
+            WriteTargetLocation(w, *target.DstLocation);
+        }
 
         if (target.Orientation)
-            j["Orientation"] = *target.Orientation;
+            w.WriteDouble("Orientation", *target.Orientation);
 
         if (target.MapID)
-            j["MapID"] = *target.MapID;
+            w.WriteUInt("MapID", *target.MapID);
 
-        j["Name"] = target.Name;
-        return j;
+        w.WriteString("Name", target.Name);
+        w.EndObject();
     }
 
-    json BaseJsonSerializer::SerializeAuthChallenge(AuthChallengeData const* data)
+    void BaseJsonSerializer::WriteAuthChallenge(JsonWriter& w, AuthChallengeData const* data)
     {
-        json j;
-        j["DosChallenge"] = json::array();
-        j["DosChallenge"].get_ref<json::array_t&>().reserve(8);
+        w.BeginObject();
+
+        w.Key("DosChallenge");
+        w.BeginArray();
         for (int i = 0; i < 8; i++)
-            j["DosChallenge"].emplace_back(data->DosChallenge[i]);
+			w.UInt(data->DosChallenge[i]);
+        w.EndArray();
 
         std::string challengeHex;
         challengeHex.reserve(64);
         for (int i = 0; i < 32; i++)
             fmt::format_to(std::back_inserter(challengeHex), "{:02X}", data->Challenge[i]);
         
-        j["Challenge"] = std::move(challengeHex);
-        j["DosZeroBits"] = data->DosZeroBits;
-        return j;
+        w.WriteString("Challenge", challengeHex);
+        w.WriteUInt("DosZeroBits", data->DosZeroBits);
+
+        w.EndObject();
     }
 
-    json BaseJsonSerializer::SerializeUpdateWorldState(WorldStateInfo const* info, bool hidden)
+    void BaseJsonSerializer::WriteUpdateWorldState(JsonWriter& w, WorldStateInfo const* info, bool hidden)
     {
-        json j;
-        j["WorldStateId"] = info->VariableID;
-        j["Value"] = info->Value;
-        j["Hidden"] = hidden;
-        return j;
+        w.BeginObject();
+        w.WriteInt("WorldStateId", info->VariableID);
+        w.WriteInt("Value", info->Value);
+        w.WriteBool("Hidden", hidden);
+        w.EndObject();
     }
 
     // helpers
-    json BaseJsonSerializer::SerializeGuidTarget(WowGuid128 const& guid)
+    void BaseJsonSerializer::WriteGuidTargetFields(JsonWriter& w, WowGuid128 const& guid)
     {
-        json t;
-        t["GUID"] = guid.ToString();
-        t["Type"] = GuidTypeToString(guid.GetType());
-        t["Low"] = guid.GetLow();
+        w.WriteString("GUID", guid.ToString());
+        w.WriteString("Type", GuidTypeToString(guid.GetType()));
+        w.WriteUInt("Low", guid.GetLow());
         if (guid.HasEntry())
-            t["Entry"] = guid.GetEntry();
-        return t;
+            w.WriteUInt("Entry", guid.GetEntry());
     }
 
-    json BaseJsonSerializer::SerializeTargetLocation(TargetLocation const& loc)
+    void BaseJsonSerializer::WriteTargetLocation(JsonWriter& w, TargetLocation const& loc)
     {
-        json j;
-        j["Transport"] = loc.Transport.ToString();
-        j["X"] = loc.X;
-        j["Y"] = loc.Y;
-        j["Z"] = loc.Z;
-        return j;
+        w.BeginObject();
+        w.WriteString("Transport", loc.Transport.ToString());
+        w.WriteDouble("X", loc.X);
+        w.WriteDouble("Y", loc.Y);
+        w.WriteDouble("Z", loc.Z);
+        w.EndObject();
     }
 }

@@ -3,21 +3,24 @@
 
 #include "Reader/BitReader.h"
 #include "Structures/Packed/WorldStateInfo.h"
-#include <nlohmann/json.hpp>
+#include "Common/JsonWriter.h"
+#include "Common/ParseResult.h"
 
 namespace PktParser::Common::Parsers::WorldStateHandlers
 {
     using BitReader = PktParser::Reader::BitReader;
-    using json = nlohmann::ordered_json;
 
     template <typename TSerializer>
-    inline json ParseUpdateWorldState(BitReader& reader, TSerializer* serializer)
+    inline ParseResult ParseUpdateWorldState(BitReader& reader, TSerializer* serializer)
     {
         auto const* worldStateInfo = reader.ReadChunk<Structures::Packed::WorldStateInfo>();
         reader.ResetBitReader();
         bool hidden = reader.ReadBit();
 
-        return serializer->SerializeUpdateWorldState(worldStateInfo, hidden);
+        JsonWriter w(128);
+        serializer->WriteUpdateWorldState(w, worldStateInfo, hidden);
+
+        return ParseResult{ w.TakeString(), std::nullopt };
     }
 }
 

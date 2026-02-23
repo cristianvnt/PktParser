@@ -9,13 +9,11 @@ using namespace PktParser::Versions;
 
 namespace PktParser::Versions::V12_0_0_65390
 {
-	json JsonSerializer::SerializeTargetData(SpellTargetData const& target) const
+	void JsonSerializer::WriteTargetData(Common::JsonWriter& w, Structures::SpellTargetData const& target) const
 	{
-		json j = BaseJsonSerializer::SerializeTargetData(target);
+		BaseJsonSerializer::WriteTargetData(w, target);
 
-		j["HousingGUID"] = target.HousingGUID.ToString();
-		j["HousingIsResident"] = target.HousingIsResident;
-
-		return j;
+		w.WriteString("HousingGUID", target.HousingGUID.ToString());
+		w.WriteBool("HousingIsResident", target.HousingIsResident);
 	}
 }

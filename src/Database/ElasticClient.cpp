@@ -3,16 +3,11 @@
 #include "Misc/Utilities.h"
 
 using namespace PktParser::Reader;
+using namespace PktParser::Common;
 
 namespace PktParser::Db
 {
     thread_local ElasticClient::ThreadContext ElasticClient::t_ctx;
-
-    std::unordered_map<std::string_view, ElasticClient::ExtractorFunc> const ElasticClient::_extractors =
-    {
-        { "SMSG_SPELL_START", &ElasticClient::ExtractSpellFields },
-        { "SMSG_SPELL_GO", &ElasticClient::ExtractSpellFields },
-    };
 
     ElasticClient::ElasticClient(std::string const& baseURL /*= "http://localhost:9200"*/)
         : _baseURL{ baseURL }
@@ -42,59 +37,13 @@ namespace PktParser::Db
         return size * nmemb;
     }
 
-    json ElasticClient::BuildBaseDocument(Reader::PktHeader const& header, char const* opcodeName,
-        uint32 build, uint32 pktNumber, std::string const& srcFile, std::string const& fileId)
-    {
-        json doc;
-        doc["build"] = build;
-        doc["file_id"] = fileId;
-        doc["packet_number"] = pktNumber;
-        doc["source_file"] = srcFile;
-        doc["direction"] = Misc::DirectionToString(header.direction);
-        doc["opcode"] = header.opcode;
-        doc["packet_name"] = opcodeName;
-        doc["timestamp"] = static_cast<int64>(header.timestamp);
-        return doc;
-    }
-
-    bool ElasticClient::ExtractSpellFields(json const& pktData, json& doc)
-    {
-        if (!pktData.contains("SpellID"))
-            return false;
-
-        doc["spell_id"] = pktData["SpellID"];
-
-        if (pktData.contains("CastID"))
-            doc["cast_id"] = pktData["CastID"].get<std::string>();
-
-        if (pktData.contains("OriginalCastID"))
-            doc["original_cast_id"] = pktData["OriginalCastID"].get<std::string>();
-
-        if (pktData.contains("CasterGUID"))
-            doc["caster_guid"] = pktData["CasterGUID"].get<std::string>();
-
-        if (pktData.contains("CasterType"))
-            doc["caster_type"] = pktData["CasterType"].get<std::string>();
-
-        if (pktData.contains("CasterEntry"))
-            doc["caster_entry"] = pktData["CasterEntry"];
-
-        if (pktData.contains("CasterLow"))
-            doc["caster_low"] = pktData["CasterLow"];
-
-        if (pktData.contains("MapID"))
-            doc["map_id"] = pktData["MapID"];
-
-        return true;
-    }
-
-    void ElasticClient::BufferDocument(json& doc, std::string const& fileId, uint32 pktNumber)
+    void ElasticClient::BufferDocument(std::string const& docStr, std::string const& fileId, uint32 pktNumber)
     {
         std::string actionLine = R"({"index":{"_index":"wow_packets","_id":")" + fileId + "_" + std::to_string(pktNumber) + R"("}})";
 
         t_ctx.buffer += actionLine;
         t_ctx.buffer += '\n';
-        t_ctx.buffer += doc.dump();
+        t_ctx.buffer += docStr;
         t_ctx.buffer += '\n';
         t_ctx.documentCount++;
 
@@ -108,20 +57,48 @@ namespace PktParser::Db
             SendBulk(std::move(payload), count);
         }
     }
-    
-    void ElasticClient::IndexPacket(Reader::PktHeader const& header, char const* opcodeName, uint32 build, uint32 pktNumber,
-        json const& pktData, std::string const& srcFile, std::string const& fileId)
+
+    void ElasticClient::WriteBaseDocument(JsonWriter& doc, Reader::PktHeader const& header, char const* opcodeName, 
+        uint32 build, uint32 pktNumber, std::string const& srcFile, std::string const& fileId)
     {
-        auto it = _extractors.find(opcodeName);
-        if (it == _extractors.end())
+        doc.WriteInt("build", build);
+        doc.WriteString("file_id", fileId);
+        doc.WriteInt("packet_number", pktNumber);
+        doc.WriteString("source_file", srcFile);
+        doc.WriteString("direction", Misc::DirectionToString(header.direction));
+        doc.WriteInt("opcode", header.opcode);
+        doc.WriteString("packet_name", opcodeName);
+        doc.WriteInt("timestamp", static_cast<int64>(header.timestamp));
+    }
+        
+    void ElasticClient::WriteSpellFields(JsonWriter& doc, Common::SpellSearchFields const& fields)
+    {
+        doc.WriteInt("spell_id", fields.spellId);
+        doc.WriteString("cast_id", fields.castId);
+        doc.WriteString("original_cast_id", fields.originalCastId);
+        doc.WriteString("caster_guid", fields.casterGuid);
+        doc.WriteString("caster_type", fields.casterType);
+        doc.WriteUInt("caster_entry", fields.casterEntry);
+        doc.WriteUInt("caster_low", fields.casterLow);
+        doc.WriteInt("map_id", fields.mapId);
+    }
+    
+    void ElasticClient::IndexPacket(PktHeader const& header, char const* opcodeName, uint32 build, uint32 pktNumber,
+        ParseResult const& result, std::string const& srcFile, std::string const& fileId)
+    {
+        if (!result.spellFields)
             return;
 
-        json doc = BuildBaseDocument(header, opcodeName, build, pktNumber, srcFile, fileId);
 
-        if (!it->second(pktData, doc))
-            return;
+        JsonWriter doc(512);
+        doc.BeginObject();
+        WriteBaseDocument(doc, header, opcodeName, build, pktNumber, srcFile, fileId);
 
-        BufferDocument(doc, fileId, pktNumber);
+        if (result.spellFields)
+            WriteSpellFields(doc, *result.spellFields);
+
+        doc.EndObject();
+        BufferDocument(doc.GetString(), fileId, pktNumber);
     }
 
     void ElasticClient::SendBulk(std::string&& payload, int32 count)

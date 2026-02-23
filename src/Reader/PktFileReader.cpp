@@ -1,76 +1,98 @@
 #include "pchdef.h"
-
 #include "PktFileReader.h"
+
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
 
 using namespace PktParser::Enums;
 
 namespace PktParser::Reader
 {
 	PktFileReader::PktFileReader(std::string const& filepath)
-		: _filepath{ filepath }, _pktNumber{ 0 }
+		: _fd{ -1 }, _mappedData{ nullptr }, _fileSize{ 0 }, _position{ 0 },
+		_filepath{ filepath }, _fileHeader{}, _pktNumber{ 0 }
 	{
-		_file.open(filepath, std::ios::binary);
-
-		if (!_file.is_open())
+		
+		_fd = open(filepath.c_str(), O_RDONLY);
+		if (_fd < 0)
 			throw ParseException{ "Failed to open: " + filepath };
 
-		_file.seekg(0, std::ios::end);
-		_fileSize = static_cast<size_t>(_file.tellg());
-		_file.seekg(0, std::ios::beg);
+		struct stat sb;
+		if (fstat(_fd, &sb) < 0)
+		{
+			close(_fd);
+			throw ParseException{ "Failed to stat: " + filepath };
+		}
+		
+		_fileSize = static_cast<size_t>(sb.st_size);
+
+		if (_fileSize == 0)
+		{
+			close(_fd);
+			throw ParseException{ "Empty file: " + filepath };
+		}
+
+		void* mapped = mmap(nullptr, _fileSize, PROT_READ, MAP_PRIVATE, _fd, 0);
+		if (mapped == MAP_FAILED)
+		{
+			close(_fd);
+			throw ParseException{ "Failed to mmap: " + filepath };
+		}
+
+		_mappedData = static_cast<uint8 const*>(mapped);
+
+		madvise(const_cast<uint8*>(_mappedData), _fileSize, MADV_SEQUENTIAL);
 	}
 
 	PktFileReader::~PktFileReader()
 	{
-		if (_file.is_open())
-			_file.close();
+		if (_mappedData)
+			munmap(const_cast<uint8*>(_mappedData), _fileSize);
+
+		if (_fd >= 0)
+			close(_fd);
 	}
 
 	void PktFileReader::ParseFileHeader()
 	{
 		char magik[3];
-		_file.read(magik, 3);
+		ReadInto(magik, 3);
 
 		if (!std::equal(magik, magik + 3, "PKT"))
 			throw ParseException{ "Invalid PKT file" };
 
-		_file.read(reinterpret_cast<char*>(&_fileHeader.version), sizeof(_fileHeader.version));
-
-		_file.read(reinterpret_cast<char*>(&_fileHeader.snifferId), sizeof(_fileHeader.snifferId));
-
-		_file.read(reinterpret_cast<char*>(&_fileHeader.clientBuild), sizeof(_fileHeader.clientBuild));
-
-		_file.read(_fileHeader.locale, 4);
-
-		_file.seekg(40, std::ios::cur); // skip session key
-
-		_file.read(reinterpret_cast<char*>(&_fileHeader.startTime), sizeof(_fileHeader.startTime));
-
-		_file.read(reinterpret_cast<char*>(&_fileHeader.startTickCount), sizeof(_fileHeader.startTickCount));
-
-		int32 additionalLength;
-		_file.read(reinterpret_cast<char*>(&additionalLength), sizeof(additionalLength));
+		_fileHeader.version = Read<uint16>();
+		_fileHeader.snifferId = Read<uint8>();
+		_fileHeader.clientBuild = Read<uint32>();
+		ReadInto(_fileHeader.locale, 4);
+		Skip(40); // skip session key
+		_fileHeader.startTime = Read<uint32>();
+		_fileHeader.startTickCount = Read<uint32>();
+		int32 additionalLength = Read<int32>();
 
 		_fileHeader.snifferVersion = 0;
 		if ((_fileHeader.snifferId == 0x15 || _fileHeader.snifferId == 0x16) && additionalLength >= 2)
-			_file.read(reinterpret_cast<char*>(&_fileHeader.snifferVersion), sizeof(_fileHeader.snifferVersion));
+			_fileHeader.snifferVersion = Read<uint16>();
 		else
-			_file.seekg(additionalLength, std::ios::cur);
+			Skip(additionalLength);
 	}
 
 	std::optional<Pkt> PktFileReader::ReadNextPacket()
 	{
-		if (_file.peek() == EOF || !_file.good())
+		if (AtEnd())
         	return std::nullopt;
 
 		try
 		{
 			PktHeader header = ParsePacketHeader();
 
-			std::vector<uint8> pktData(header.packetLength);
-			_file.read(reinterpret_cast<char*>(pktData.data()), header.packetLength);
+			if (_position + header.packetLength > _fileSize)
+            	return std::nullopt;
 
-			if (_file.gcount() != header.packetLength)
-				return std::nullopt;
+			std::vector<uint8> pktData(header.packetLength);
+			ReadInto(pktData.data(), header.packetLength);
 
 			if (header.packetLength >= 4)
 				header.opcode = static_cast<uint32>(pktData[0])
@@ -100,8 +122,7 @@ namespace PktParser::Reader
 	{
 		PktHeader header{};
 
-		uint32 directionMagik;
-		_file.read(reinterpret_cast<char*>(&directionMagik), sizeof(directionMagik));
+		uint32 directionMagik = Read<uint32>();
 
 		switch (directionMagik)
 		{
@@ -122,13 +143,11 @@ namespace PktParser::Reader
 			break;
 		}
 
-		_file.read(reinterpret_cast<char*>(&header.connectionIndex), sizeof(header.connectionIndex));
-		_file.read(reinterpret_cast<char*>(&header.tickCount), sizeof(header.tickCount));
+		header.connectionIndex = Read<int32>();
+		header.tickCount = Read<uint32>();
 
-		int32 packetAdditionalSize;
-		_file.read(reinterpret_cast<char*>(&packetAdditionalSize), sizeof(packetAdditionalSize));
-
-		_file.read(reinterpret_cast<char*>(&header.packetLength), sizeof(header.packetLength));
+		int32 packetAdditionalSize = Read<int32>();
+		header.packetLength = Read<int32>();
 
 		ParsePacketAdditionalData(packetAdditionalSize, header.timestamp);
 
@@ -144,19 +163,18 @@ namespace PktParser::Reader
 
 		size_t bytesRead = 0;
 
-		_file.read(reinterpret_cast<char*>(&outTimestamp), sizeof(outTimestamp));
-		bytesRead += sizeof(outTimestamp);
+		outTimestamp = Read<double>();
+		bytesRead += sizeof(double);
 
 		if (_fileHeader.snifferVersion >= 0x0101)
 		{
-			uint8 commentLength;
-			_file.read(reinterpret_cast<char*>(&commentLength), sizeof(commentLength));
-			bytesRead += sizeof(commentLength);
+			uint8 commentLength = Read<uint8>();
+			bytesRead += sizeof(uint8);
 
 			if (commentLength > 0)
 			{
 				// or just skip?
-				_file.seekg(commentLength, std::ios::cur);
+				Skip(commentLength);
 				bytesRead += commentLength;
 			}
 		}
@@ -165,19 +183,16 @@ namespace PktParser::Reader
 		{
 			while (bytesRead < static_cast<size_t>(packetAdditionalSize))
 			{
-				uint8 type;
-				_file.read(reinterpret_cast<char*>(&type), sizeof(type));
+				uint8 type = Read<uint8>();
 				bytesRead++;
 
 				switch (type)
 				{
 				case 0x50: // override phasing
 				{
-					uint64 lowGuid, highGuid;
-					int32 phaseId;
-					_file.read(reinterpret_cast<char*>(&lowGuid), sizeof(lowGuid));
-					_file.read(reinterpret_cast<char*>(&highGuid), sizeof(highGuid));
-					_file.read(reinterpret_cast<char*>(&phaseId), sizeof(phaseId));
+					uint64 lowGuid = Read<uint64>();
+					uint64 highGuid = Read<uint64>();
+					int32 phaseId = Read<int32>();
 					bytesRead += 8 + 8 + 4;
 					LOG("Phase override: GUID({:016X}{:016X}), Phase: {}", highGuid, lowGuid, phaseId);
 					break;
@@ -188,7 +203,7 @@ namespace PktParser::Reader
 					size_t remaining = packetAdditionalSize - bytesRead;
 					if (remaining > 0)
 					{
-						_file.seekg(remaining, std::ios::cur);
+						Skip(remaining);
 						bytesRead += remaining;
 						LOG("UNK type 0x{:02X}, skipped {} bytes", type, remaining);
 					}
@@ -200,7 +215,7 @@ namespace PktParser::Reader
 
 		size_t remaining = packetAdditionalSize - bytesRead;
 		if (remaining > 0)
-			_file.seekg(remaining, std::ios::cur);
+			Skip(remaining);
 	}
 }
 

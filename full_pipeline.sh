@@ -30,7 +30,7 @@ curl -s -X PUT "http://localhost:9200/wow_packets/_settings" \
 
 echo ">>>>> BULK LOAD PIPELINE <<<<<"
 time {
-    ./build/PktParser "$PKT_PATH" --export ${PARSER_VERSION:+--parser-version "$PARSER_VERSION"}
+    LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2 ./build/PktParser "$PKT_PATH" --export ${PARSER_VERSION:+--parser-version "$PARSER_VERSION"}
 
     ./utils/run_sstable.sh "$CSV_DIR" "$SSTABLE_OUT"
 

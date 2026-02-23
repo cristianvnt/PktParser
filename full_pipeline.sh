@@ -30,14 +30,12 @@ curl -s -X PUT "http://localhost:9200/wow_packets/_settings" \
 
 echo ">>>>> BULK LOAD PIPELINE <<<<<"
 time {
-    LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2 ./build/PktParser "$PKT_PATH" --export ${PARSER_VERSION:+--parser-version "$PARSER_VERSION"}
+    ./build/PktParser "$PKT_PATH" --export ${PARSER_VERSION:+--parser-version "$PARSER_VERSION"}
 
     ./utils/run_sstable.sh "$CSV_DIR" "$SSTABLE_OUT"
 
     sstableloader -d 127.0.0.1 "$SSTABLE_OUT/wow_packets/packets/"
 }
-
-rm -rf "$CSV_DIR"/*.csv "$SSTABLE_OUT"
 
 curl -s -X POST "http://localhost:9200/wow_packets/_forcemerge?max_num_segments=1&wait_for_completion=false" > /dev/null
 

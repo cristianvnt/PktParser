@@ -15,7 +15,7 @@ namespace PktParser::Versions::V12_0_0_65390
 		BaseJsonSerializer::WriteTargetDataFields(w, target);
 
 		if (!target.HousingGUID.IsEmpty())
-			w.WriteString("HousingGUID", target.HousingGUID.ToHexString());
+			w.WriteGuid("HousingGUID", target.HousingGUID);
 		if (target.HousingIsResident)
 			w.WriteBool("HousingIsResident", target.HousingIsResident);
 

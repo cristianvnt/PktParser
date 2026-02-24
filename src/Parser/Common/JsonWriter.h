@@ -2,6 +2,7 @@
 #define JSON_WRITER_H
 
 #include "Misc/Define.h"
+#include "Misc/WowGuid.h"
 
 #include <string>
 #include <fmt/format.h>
@@ -87,6 +88,13 @@ namespace PktParser::Common
             _needsComma = true;
         }
 
+        void UInt64(uint64 val)
+        {
+            Comma();
+            fmt::format_to(std::back_inserter(_buffer), "{}", val);
+            _needsComma = true;
+        }
+
         void Double(double val)
         {
             Comma();
@@ -142,6 +150,15 @@ namespace PktParser::Common
         {
             Key(key);
             Bool(val);
+        }
+
+        void WriteGuid(char const* key, Misc::WowGuid128 const& guid)
+        {
+            Key(key);
+            BeginArray();
+            UInt64(guid.High);
+            UInt64(guid.Low);
+            EndArray();
         }
 
         std::string TakeString() { return std::move(_buffer); }

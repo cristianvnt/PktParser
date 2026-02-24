@@ -18,15 +18,15 @@ namespace PktParser::Common
 
     void BaseJsonSerializer::WriteSpellDataFields(JsonWriter &w, Structures::SpellCastData const &data) const
     {
-        w.WriteString("CasterGUID", data.CasterGUID.ToHexString());
+        w.WriteGuid("CasterGUID", data.CasterGUID);
 
         if (data.CasterUnit.IsEmpty() == false && data.CasterUnit != data.CasterGUID)
-            w.WriteString("CasterUnit", data.CasterUnit.ToHexString());
+            w.WriteGuid("CasterUnit", data.CasterUnit);
 
-        w.WriteString("CastID", data.CastID.ToHexString());
+        w.WriteGuid("CastID", data.CastID);
 
         if (!data.OriginalCastID.IsEmpty())
-            w.WriteString("OriginalCastID", data.OriginalCastID.ToHexString());
+            w.WriteGuid("OriginalCastID", data.OriginalCastID);
 
         w.WriteInt("SpellID", data.FixedData.SpellID);
 
@@ -59,7 +59,7 @@ namespace PktParser::Common
         if (data.HealPrediction.Type)
             w.WriteUInt("HealType", data.HealPrediction.Type);
         if (!data.BeaconGUID.IsEmpty())
-            w.WriteString("BeaconGUID", data.BeaconGUID.ToHexString());
+            w.WriteGuid("BeaconGUID", data.BeaconGUID);
 
 		w.Key("Target");
 		WriteTargetData(w, data.TargetData);
@@ -146,14 +146,12 @@ namespace PktParser::Common
     void BaseJsonSerializer::WriteTargetDataFields(JsonWriter &w, Structures::SpellTargetData const &target) const
     {
         if (target.Flags)
-        {
             w.WriteUInt("Flags", target.Flags);
-            w.WriteString("FlagsString", GetTargetFlagName(target.Flags));
-        }
+            
         if (!target.Unit.IsEmpty())
-            w.WriteString("Unit", target.Unit.ToHexString());
+            w.WriteGuid("Unit", target.Unit);
         if (!target.Item.IsEmpty())
-            w.WriteString("Item", target.Item.ToHexString());
+            w.WriteGuid("Item", target.Item);
 
         if (target.SrcLocation)
         {
@@ -210,14 +208,14 @@ namespace PktParser::Common
     // helpers
     void BaseJsonSerializer::WriteGuidTargetFields(JsonWriter& w, WowGuid128 const& guid)
     {
-        w.WriteString("GUID", guid.ToHexString());
+        w.WriteGuid("GUID", guid);
     }
 
     void BaseJsonSerializer::WriteTargetLocation(JsonWriter& w, TargetLocation const& loc)
     {
         w.BeginObject();
         if (!loc.Transport.IsEmpty())
-            w.WriteString("Transport", loc.Transport.ToHexString());
+            w.WriteGuid("Transport", loc.Transport);
         w.WriteDouble("X", loc.X);
         w.WriteDouble("Y", loc.Y);
         w.WriteDouble("Z", loc.Z);

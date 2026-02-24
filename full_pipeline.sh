@@ -22,6 +22,11 @@ cleanup()
 {
     curl -s -X PUT "http://localhost:9200/wow_packets/_settings" \
         -H "Content-Type: application/json" -d '{"refresh_interval": "5s"}' > /dev/null
+
+    # keep a csv if you really want to
+    if [ "${KEEP_TEMP:-0}" != "1" ]; then
+        rm -rf "$CSV_DIR"/*.csv "$SSTABLE_OUT"
+    fi
 }
 trap cleanup EXIT
 
@@ -31,6 +36,9 @@ curl -s -X PUT "http://localhost:9200/wow_packets/_settings" \
 echo ">>>>> BULK LOAD PIPELINE <<<<<"
 time {
     ./build/PktParser "$PKT_PATH" --export ${PARSER_VERSION:+--parser-version "$PARSER_VERSION"}
+
+    # log sstable + loader
+    exec > >(stdbuf -oL tee -a pipeline.log) 2>&1
 
     ./utils/run_sstable.sh "$CSV_DIR" "$SSTABLE_OUT"
 

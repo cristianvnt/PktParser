@@ -26,4 +26,9 @@ CREATE TABLE IF NOT EXISTS wow_packets.packets (
     'scaling_parameters': 'T4',
     'target_sstable_size': '1GiB',
     'base_shard_count': '4'
+  }
+  AND COMPRESSION = {
+    'class': 'org.apache.cassandra.io.compress.ZstdCompressor',
+    'compression_level': '3',
+    'chunk_length_in_kb': '16'
   };

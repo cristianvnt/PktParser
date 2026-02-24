@@ -61,12 +61,12 @@ namespace PktParser::Misc
         return uuid;
     }
 	
-	inline std::vector<uint8> CompressJson(std::string const& json)
+	inline std::vector<uint8> CompressJson(std::string const& json, int level = 6)
     {
         size_t maxSize = ZSTD_compressBound(json.size());
         std::vector<uint8> compressed(maxSize);
 
-        size_t compressedSize = ZSTD_compress(compressed.data(), compressed.size(), json.data(), json.size(), 3);
+        size_t compressedSize = ZSTD_compress(compressed.data(), compressed.size(), json.data(), json.size(), level);
 
         if (ZSTD_isError(compressedSize))
         {

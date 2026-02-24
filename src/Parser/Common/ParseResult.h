@@ -24,6 +24,7 @@ namespace PktParser::Common
     {
         std::string json;
         std::optional<SpellSearchFields> spellFields;
+        bool storeAsJson;
     };
 }
 

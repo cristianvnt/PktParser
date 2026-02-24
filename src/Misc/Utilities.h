@@ -79,6 +79,23 @@ namespace PktParser::Misc
         return compressed;
     }
 
+	inline std::vector<uint8> CompressData(std::vector<uint8> const& input, int level = 6)
+    {
+        size_t maxSize = ZSTD_compressBound(input.size());
+        std::vector<uint8> compressed(maxSize);
+
+        size_t compressedSize = ZSTD_compress(compressed.data(), compressed.size(), input.data(), input.size(), level);
+
+        if (ZSTD_isError(compressedSize))
+        {
+            LOG("ZSTD compression failed: {}", ZSTD_getErrorName(compressedSize));
+            return input;
+        }
+
+        compressed.resize(compressedSize);
+        return compressed;
+    }
+
 	inline std::string Base64Encode(uint8 const* data, size_t len)
 	{
 		BIO* b64 = BIO_new(BIO_f_base64());

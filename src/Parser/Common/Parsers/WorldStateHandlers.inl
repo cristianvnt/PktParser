@@ -20,7 +20,7 @@ namespace PktParser::Common::Parsers::WorldStateHandlers
         JsonWriter w(128);
         serializer->WriteUpdateWorldState(w, worldStateInfo, hidden);
 
-        return ParseResult{ w.TakeString(), std::nullopt };
+        return ParseResult{ w.TakeString(), std::nullopt, false };
     }
 }
 

@@ -164,7 +164,7 @@ namespace PktParser::Common::Parsers::SpellHandlers
         fields.casterLow = data.CasterGUID.GetLow();
         fields.mapId = data.CasterGUID.GetMapId();
 
-        return ParseResult{ w.TakeString(), std::move(fields) };
+        return ParseResult{ w.TakeString(), std::move(fields), true };
     }
 }
 

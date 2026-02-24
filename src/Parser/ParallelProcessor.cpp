@@ -55,7 +55,11 @@ namespace PktParser
 
                 if (_toCSV)
                 {
-                    std::vector<uint8> compressed = Misc::CompressJson(pktDataOptResult->json);
+                    std::vector<uint8> compressed;
+                    if (pktDataOptResult->storeAsJson)
+                        compressed = Misc::CompressJson(pktDataOptResult->json);
+                    else
+                        compressed = Misc::CompressData(pkt.data);
                     std::string b64 = Misc::Base64Encode(compressed.data(), compressed.size());
 
                     csvFile << work.Build << ","

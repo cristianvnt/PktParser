@@ -27,6 +27,10 @@ namespace PktParser::Db
             t_ctx.curl = curl_easy_init();
             if (!t_ctx.curl)
                 LOG("WARN: Failed to init curl for thread");
+            
+            t_ctx.headers = nullptr;
+            t_ctx.headers = curl_slist_append(t_ctx.headers, "Content-Type: application/x-ndjson");
+            t_ctx.buffer.reserve(BULK_RESERVE);
         }
         return t_ctx.curl;
     }
@@ -39,11 +43,9 @@ namespace PktParser::Db
 
     void ElasticClient::BufferDocument(std::string const& docStr, std::string const& fileId, uint32 pktNumber)
     {
-        std::string actionLine = R"({"index":{"_index":"wow_packets","_id":")" + fileId + "_" + std::to_string(pktNumber) + R"("}})";
-
-        t_ctx.buffer += actionLine;
+        fmt::format_to(std::back_inserter(t_ctx.buffer), R"({{"index":{{"_index":"wow_packets","_id":"{}_{}"}}}})", fileId, pktNumber);
         t_ctx.buffer += '\n';
-        t_ctx.buffer += docStr;
+        t_ctx.buffer.append(docStr);
         t_ctx.buffer += '\n';
         t_ctx.documentCount++;
 
@@ -52,6 +54,7 @@ namespace PktParser::Db
             std::string payload = std::move(t_ctx.buffer);
             int32 count = t_ctx.documentCount;
             t_ctx.buffer.clear();
+            t_ctx.buffer.reserve(BULK_RESERVE);
             t_ctx.documentCount = 0;
 
             SendBulk(std::move(payload), count);
@@ -127,10 +130,7 @@ namespace PktParser::Db
             curl_easy_setopt(curl, CURLOPT_POST, 1L);
             curl_easy_setopt(curl, CURLOPT_POSTFIELDS, payload.c_str());
             curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, static_cast<long>(payload.size()));
-
-            struct curl_slist* headers = nullptr;
-            headers = curl_slist_append(headers, "Content-Type: application/x-ndjson");
-            curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+            curl_easy_setopt(curl, CURLOPT_HTTPHEADER, t_ctx.headers);
 
             std::string response;
             curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
@@ -140,7 +140,6 @@ namespace PktParser::Db
                 _totalBytes.fetch_add(payload.size(), std::memory_order_relaxed);
 
             CURLcode res = curl_easy_perform(curl);
-            curl_slist_free_all(headers);
 
             if (res != CURLE_OK)
             {
@@ -172,15 +171,20 @@ namespace PktParser::Db
 
     void ElasticClient::FlushThread()
     {
-        if (t_ctx.buffer.empty())
-            return;
+        if (!t_ctx.buffer.empty())
+        {
+            std::string payload = std::move(t_ctx.buffer);
+            int32 count = t_ctx.documentCount;
+            t_ctx.buffer.clear();
+            t_ctx.documentCount = 0;
+            SendBulk(std::move(payload), count);
+        }
 
-        std::string payload = std::move(t_ctx.buffer);
-        int32 count = t_ctx.documentCount;
-        t_ctx.buffer.clear();
-        t_ctx.documentCount = 0;
-
-        SendBulk(std::move(payload), count);
+        if (t_ctx.headers)
+        {
+            curl_slist_free_all(t_ctx.headers);
+            t_ctx.headers = nullptr;
+        }
 
         if (t_ctx.curl)
         {

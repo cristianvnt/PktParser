@@ -4,9 +4,12 @@ curl -X PUT "http://localhost:9200/wow_packets" -H "Content-Type: application/js
     "settings": {
         "number_of_shards": 1,
         "number_of_replicas": 0,
-        "refresh_interval": "5s"
+        "refresh_interval": "5s",
+        "index.translog.durability": "async",
+        "index.translog.sync_interval": "30s"
     },
     "mappings": {
+        "_source": { "enabled": false },
         "properties": {
             "build":            { "type": "integer" },
             "file_id":          { "type": "keyword" },

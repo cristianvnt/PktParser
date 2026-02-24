@@ -18,6 +18,7 @@ namespace PktParser::Db
     private:
         static constexpr int32 BULK_SIZE = 15000;
         static constexpr int32 MAX_RETRIES = 3;
+        static constexpr size_t BULK_RESERVE = BULK_SIZE * 500;
         std::string _baseURL;
         
         std::atomic<size_t> _totalIndexed{ 0 };
@@ -28,6 +29,7 @@ namespace PktParser::Db
         struct ThreadContext
         {
             CURL* curl = nullptr;
+            curl_slist* headers = nullptr;
             std::string buffer;
             int32 documentCount = 0;
         };

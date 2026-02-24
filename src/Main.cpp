@@ -58,8 +58,7 @@ int main(int argc, char* argv[])
 	BuildInfo::Instance().Initialize();
 
 	std::optional<Database> db;
-	if (!toCSV)
-		db.emplace();
+	db.emplace();
 
 	if (serveRequested)
 	{
@@ -165,7 +164,7 @@ int main(int argc, char* argv[])
 
 	LOG(">>>>> ALL FILES PARSING COMPLETE <<<<<");
 	LOG("Files: {}, Parsed: {}, Skipped: {}, Failed: {}", files.size(), totalStats.ParsedCount, totalStats.SkippedCount, totalStats.FailedCount);
-	if (db)
+	if (db && !toCSV)
 		LOG("DB Stats: {} inserted, {} failed", db->GetTotalInserted(), db->GetTotalFailed());
 	LOG("Total time: {}ms ({:.2f} seconds)", totalMs, totalMs / 1000.0);
 

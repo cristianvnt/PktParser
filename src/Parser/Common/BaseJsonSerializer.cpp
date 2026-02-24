@@ -11,73 +11,91 @@ namespace PktParser::Common
 {
     void BaseJsonSerializer::WriteSpellData(JsonWriter& w, SpellCastData const& data) const
 	{
-		w.WriteString("CasterGUID", data.CasterGUID.ToString());
-		w.WriteString("CasterType", GuidTypeToString(data.CasterGUID.GetType()));
-        w.WriteUInt("CasterEntry", data.CasterGUID.GetEntry());
-        w.WriteUInt("CasterLow", data.CasterGUID.GetLow());
-        w.WriteInt("MapID", data.CasterGUID.GetMapId());
+        w.BeginObject();
+        WriteSpellDataFields(w, data);
+		w.EndObject();
+	}
 
-		w.WriteString("CasterUnit", data.CasterUnit.ToString());
-        w.WriteString("CastID", data.CastID.ToString());
-        w.WriteString("OriginalCastID", data.OriginalCastID.ToString());
+    void BaseJsonSerializer::WriteSpellDataFields(JsonWriter &w, Structures::SpellCastData const &data) const
+    {
+        w.WriteString("CasterGUID", data.CasterGUID.ToHexString());
 
-		w.WriteInt("SpellID", data.FixedData.SpellID);
-        w.WriteUInt("SpellXSpellVisualID", data.FixedData.Visual.SpellXSpellVisualID);
-        w.WriteUInt("ScriptVisualID", data.FixedData.Visual.ScriptVisualID);
-        w.WriteUInt("CastFlags", data.FixedData.CastFlags);
-        w.WriteUInt("CastFlagsEx", data.FixedData.CastFlagsEx);
-        w.WriteUInt("CastFlagsEx2", data.FixedData.CastFlagsEx2);
-        w.WriteUInt("CastTime", data.FixedData.CastTime);
+        if (data.CasterUnit.IsEmpty() == false && data.CasterUnit != data.CasterGUID)
+            w.WriteString("CasterUnit", data.CasterUnit.ToHexString());
 
-		w.WriteUInt("TravelTime", data.FixedData.MissileTrajectory.TravelTime);
-        w.WriteDouble("Pitch", data.FixedData.MissileTrajectory.Pitch);
+        w.WriteString("CastID", data.CastID.ToHexString());
 
-        w.WriteInt("AmmoDisplayID", data.FixedData.AmmoDisplayID);
-        w.WriteUInt("DestLocSpellCastIndex", data.FixedData.DestLocSpellCastIndex);
-        w.WriteUInt("ImmunitySchool", data.FixedData.Immunities.School);
-        w.WriteUInt("ImmunityValue", data.FixedData.Immunities.Value);
+        if (!data.OriginalCastID.IsEmpty())
+            w.WriteString("OriginalCastID", data.OriginalCastID.ToHexString());
 
-        w.WriteUInt("HealPoints", data.HealPrediction.Points);
-        w.WriteUInt("HealType", data.HealPrediction.Type);
-        w.WriteString("BeaconGUID", data.BeaconGUID.ToString());
+        w.WriteInt("SpellID", data.FixedData.SpellID);
 
-        w.WriteUInt("HitTargetsCount", data.HitTargetsCount);
-        w.WriteUInt("MissTargetsCount", data.MissTargetsCount);
-        w.WriteUInt("HitStatusCount", data.HitStatusCount);
-        w.WriteUInt("MissStatusCount", data.MissStatusCount);
-        w.WriteUInt("RemainingPowerCount", data.RemainingPowerCount);
-        w.WriteBool("HasRuneData", data.HasRuneData);
-        w.WriteUInt("TargetPointsCount", data.TargetPointsCount);
+		if (data.FixedData.Visual.SpellXSpellVisualID)
+            w.WriteUInt("SpellXSpellVisualID", data.FixedData.Visual.SpellXSpellVisualID);
+        if (data.FixedData.Visual.ScriptVisualID)
+            w.WriteUInt("ScriptVisualID", data.FixedData.Visual.ScriptVisualID);
+        if (data.FixedData.CastFlags)
+            w.WriteUInt("CastFlags", data.FixedData.CastFlags);
+        if (data.FixedData.CastFlagsEx)
+            w.WriteUInt("CastFlagsEx", data.FixedData.CastFlagsEx);
+        if (data.FixedData.CastFlagsEx2)
+            w.WriteUInt("CastFlagsEx2", data.FixedData.CastFlagsEx2);
+        if (data.FixedData.CastTime)
+            w.WriteUInt("CastTime", data.FixedData.CastTime);
+        if (data.FixedData.MissileTrajectory.TravelTime)
+            w.WriteUInt("TravelTime", data.FixedData.MissileTrajectory.TravelTime);
+        if (data.FixedData.MissileTrajectory.Pitch != 0.0)
+            w.WriteDouble("Pitch", data.FixedData.MissileTrajectory.Pitch);
+        if (data.FixedData.AmmoDisplayID)
+            w.WriteInt("AmmoDisplayID", data.FixedData.AmmoDisplayID);
+        if (data.FixedData.DestLocSpellCastIndex)
+            w.WriteUInt("DestLocSpellCastIndex", data.FixedData.DestLocSpellCastIndex);
+        if (data.FixedData.Immunities.School)
+            w.WriteUInt("ImmunitySchool", data.FixedData.Immunities.School);
+        if (data.FixedData.Immunities.Value)
+            w.WriteUInt("ImmunityValue", data.FixedData.Immunities.Value);
+        if (data.HealPrediction.Points)
+            w.WriteUInt("HealPoints", data.HealPrediction.Points);
+        if (data.HealPrediction.Type)
+            w.WriteUInt("HealType", data.HealPrediction.Type);
+        if (!data.BeaconGUID.IsEmpty())
+            w.WriteString("BeaconGUID", data.BeaconGUID.ToHexString());
 
 		w.Key("Target");
 		WriteTargetData(w, data.TargetData);
 
-		w.Key("HitTargets");
-        w.BeginArray();
-        for (size_t i = 0; i < data.HitTargets.size(); ++i)
+        if (!data.HitTargets.empty())
         {
-            w.BeginObject();
-            WriteGuidTargetFields(w, data.HitTargets[i]);
-            if (i < data.HitStatus.size())
-                w.WriteUInt("HitStatus", data.HitStatus[i].Reason);
-            w.EndObject();
-        }
-        w.EndArray();
-
-		w.Key("MissTargets");
-        w.BeginArray();
-        for (size_t i = 0; i < data.MissTargets.size(); ++i)
-        {
-            w.BeginObject();
-            WriteGuidTargetFields(w, data.MissTargets[i]);
-            if (i < data.MissStatus.size())
+            w.Key("HitTargets");
+            w.BeginArray();
+            for (size_t i = 0; i < data.HitTargets.size(); ++i)
             {
-                w.WriteUInt("MissReason", data.MissStatus[i].MissReason);
-                w.WriteUInt("ReflectStatus", data.MissStatus[i].ReflectStatus);
+                w.BeginObject();
+                WriteGuidTargetFields(w, data.HitTargets[i]);
+                if (i < data.HitStatus.size() && data.HitStatus[i].Reason != 0)
+                    w.WriteUInt("HitStatus", data.HitStatus[i].Reason);
+                w.EndObject();
             }
-            w.EndObject();
+            w.EndArray();
         }
-        w.EndArray();
+
+        if (!data.MissTargets.empty())
+        {
+            w.Key("MissTargets");
+            w.BeginArray();
+            for (size_t i = 0; i < data.MissTargets.size(); ++i)
+            {
+                w.BeginObject();
+                WriteGuidTargetFields(w, data.MissTargets[i]);
+                if (i < data.MissStatus.size())
+                {
+                    w.WriteUInt("MissReason", data.MissStatus[i].MissReason);
+                    w.WriteUInt("ReflectStatus", data.MissStatus[i].ReflectStatus);
+                }
+                w.EndObject();
+            }
+            w.EndArray();
+        }
 
 		if (!data.RemainingPower.empty())
         {
@@ -116,15 +134,26 @@ namespace PktParser::Common
                 WriteTargetLocation(w, point);
             w.EndArray();
         }
-	}
+    }
 
     void BaseJsonSerializer::WriteTargetData(JsonWriter& w, SpellTargetData const& target) const
     {
         w.BeginObject();
-        w.WriteUInt("Flags", target.Flags);
-        w.WriteString("FlagsString", GetTargetFlagName(target.Flags));
-        w.WriteString("Unit", target.Unit.ToString());
-        w.WriteString("Item", target.Item.ToString());
+        WriteTargetDataFields(w, target);
+        w.EndObject();
+    }
+
+    void BaseJsonSerializer::WriteTargetDataFields(JsonWriter &w, Structures::SpellTargetData const &target) const
+    {
+        if (target.Flags)
+        {
+            w.WriteUInt("Flags", target.Flags);
+            w.WriteString("FlagsString", GetTargetFlagName(target.Flags));
+        }
+        if (!target.Unit.IsEmpty())
+            w.WriteString("Unit", target.Unit.ToHexString());
+        if (!target.Item.IsEmpty())
+            w.WriteString("Item", target.Item.ToHexString());
 
         if (target.SrcLocation)
         {
@@ -134,7 +163,7 @@ namespace PktParser::Common
 
         if (target.DstLocation)
         {
-			w.Key("DstLocation");
+            w.Key("DstLocation");
             WriteTargetLocation(w, *target.DstLocation);
         }
 
@@ -144,8 +173,8 @@ namespace PktParser::Common
         if (target.MapID)
             w.WriteUInt("MapID", *target.MapID);
 
-        w.WriteString("Name", target.Name);
-        w.EndObject();
+        if (!target.Name.empty())
+            w.WriteString("Name", target.Name);
     }
 
     void BaseJsonSerializer::WriteAuthChallenge(JsonWriter& w, AuthChallengeData const* data)
@@ -181,17 +210,14 @@ namespace PktParser::Common
     // helpers
     void BaseJsonSerializer::WriteGuidTargetFields(JsonWriter& w, WowGuid128 const& guid)
     {
-        w.WriteString("GUID", guid.ToString());
-        w.WriteString("Type", GuidTypeToString(guid.GetType()));
-        w.WriteUInt("Low", guid.GetLow());
-        if (guid.HasEntry())
-            w.WriteUInt("Entry", guid.GetEntry());
+        w.WriteString("GUID", guid.ToHexString());
     }
 
     void BaseJsonSerializer::WriteTargetLocation(JsonWriter& w, TargetLocation const& loc)
     {
         w.BeginObject();
-        w.WriteString("Transport", loc.Transport.ToString());
+        if (!loc.Transport.IsEmpty())
+            w.WriteString("Transport", loc.Transport.ToHexString());
         w.WriteDouble("X", loc.X);
         w.WriteDouble("Y", loc.Y);
         w.WriteDouble("Z", loc.Z);

@@ -77,8 +77,7 @@ namespace PktParser
                 else
                 {
                     es.IndexPacket(pkt.header, opcodeName, work.Build, pkt.pktNumber, *pktDataOptResult, work.SrcFile, work.FileIdStr);
-                    if (_db)
-                        _db->StorePacket(pkt.header, work.Build, pkt.pktNumber, std::move(pktDataOptResult->json), work.FileId);
+                    _db->StorePacket(pkt.header, work.Build, pkt.pktNumber, std::move(pktDataOptResult->json), work.FileId);
                 }
 
                 _parsedCount.fetch_add(1, std::memory_order_relaxed);
@@ -218,8 +217,7 @@ namespace PktParser
             });
         }
 
-        if (_db)
-            _db->StoreFileMetadata(fileId, srcFile, build, static_cast<int64>(reader.GetStartTime()), static_cast<uint32>(_parsedCount.load()));
+        _db->StoreFileMetadata(fileId, srcFile, build, static_cast<int64>(reader.GetStartTime()), static_cast<uint32>(_parsedCount.load()));
 
         auto endTime = std::chrono::high_resolution_clock::now();
 		auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);

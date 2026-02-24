@@ -83,12 +83,15 @@ namespace PktParser::Db
             delete data;
         _pool.clear();
 
-        double totalMB = _totalBytes.load() / (1024.0 * 1024.0);
-        double compressedMB = _totalCompressedBytes.load() / (1024.0 * 1024.0);
+        if (_totalInserted.load() > 0 || _totalFailed.load() > 0)
+        {
+            double totalMB = _totalBytes.load() / (1024.0 * 1024.0);
+            double compressedMB = _totalCompressedBytes.load() / (1024.0 * 1024.0);
 
-        LOG("Database shutdown complete: {} inserted, {} failed, {:.2f} MB written",
-            _totalInserted.load(), _totalFailed.load(), _totalBytes.load() / (1024.0 * 1024.0));
-        LOG("Storage: {:.2f} MB raw -> {:.2f} MB compressed", totalMB, compressedMB);
+            LOG("Database shutdown complete: {} inserted, {} failed, {:.2f} MB written",
+                _totalInserted.load(), _totalFailed.load(), _totalBytes.load() / (1024.0 * 1024.0));
+            LOG("Storage: {:.2f} MB raw -> {:.2f} MB compressed", totalMB, compressedMB);
+        }
     }
 
     InsertData* Database::AcquireInsertData()
@@ -284,12 +287,14 @@ namespace PktParser::Db
     void Database::Flush()
     {
         if (_pendingCount.load() > 0)
+        {
             LOG("Waiting for {} pending inserts...", _pendingCount.load());
 
-        while (_pendingCount.load() > 0)
-            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+            while (_pendingCount.load() > 0)
+                std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
-        LOG("FLUSH Complete: {} inserted, {} failed", _totalInserted.load(), _totalFailed.load());
+            LOG("FLUSH Complete: {} inserted, {} failed", _totalInserted.load(), _totalFailed.load());
+        }
     }
 
     void CallbackContext::ReleaseToPool(InsertData* data)

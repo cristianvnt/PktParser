@@ -20,7 +20,7 @@ namespace PktParser::Common
         
         virtual void WriteSpellData(JsonWriter& w, Structures::SpellCastData const& data) const;
         virtual void WriteTargetData(JsonWriter& w, Structures::SpellTargetData const& target) const;
-
+        
         // same everywhere (allegedly)
         static void WriteAuthChallenge(JsonWriter& w, Structures::Packed::AuthChallengeData const* data);
         static void WriteUpdateWorldState(JsonWriter& w, Structures::Packed::WorldStateInfo const* info, bool hidden);
@@ -28,6 +28,10 @@ namespace PktParser::Common
         // helpers
         static void WriteGuidTargetFields(JsonWriter& w, Misc::WowGuid128 const& guid);
         static void WriteTargetLocation(JsonWriter& w, Structures::TargetLocation const& loc);
+
+    protected:
+        void WriteSpellDataFields(JsonWriter& w, Structures::SpellCastData const& data) const;
+        void WriteTargetDataFields(JsonWriter& w, Structures::SpellTargetData const& target) const;
     };
 }
 #endif

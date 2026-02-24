@@ -10,9 +10,14 @@ namespace PktParser::Versions::V11_2_7_64632
 {
 	void JsonSerializer::WriteTargetData(Common::JsonWriter& w, Structures::SpellTargetData const& target) const
 	{
-		BaseJsonSerializer::WriteTargetData(w, target);
+		w.BeginObject();
+		BaseJsonSerializer::WriteTargetDataFields(w, target);
 
-		w.WriteString("HousingGUID", target.HousingGUID.ToString());
-		w.WriteBool("HousingIsResident", target.HousingIsResident);
+		if (!target.HousingGUID.IsEmpty())
+			w.WriteString("HousingGUID", target.HousingGUID.ToHexString());
+		if (target.HousingIsResident)
+			w.WriteBool("HousingIsResident", target.HousingIsResident);
+
+		w.EndObject();
 	}
 }

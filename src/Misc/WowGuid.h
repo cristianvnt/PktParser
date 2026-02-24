@@ -12,8 +12,8 @@ namespace PktParser::Misc
 
 	struct WowGuid128
 	{
-		uint64 Low;
 		uint64 High;
+		uint64 Low;
 
 		GuidType GetType() const;
 		uint16 GetRealmId() const;
@@ -26,6 +26,12 @@ namespace PktParser::Misc
 		bool HasEntry() const;
 
 		std::string ToString() const;
+		std::string ToHexString() const;
+
+		bool operator!=(WowGuid128 const& other) const
+		{
+			return High != other.High || Low != other.Low;
+		}
 	};
 
 	WowGuid128 ReadGuid128(BitReader& reader);

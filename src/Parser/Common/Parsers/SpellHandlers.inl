@@ -150,9 +150,7 @@ namespace PktParser::Common::Parsers::SpellHandlers
             data.TargetPoints[i] = ReadLocation(reader);
 
         JsonWriter w(2048);
-        w.BeginObject();
         serializer->WriteSpellData(w, data);
-        w.EndObject();
 
         SpellSearchFields fields;
         fields.spellId = data.FixedData.SpellID;

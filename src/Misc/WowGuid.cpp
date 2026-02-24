@@ -64,7 +64,14 @@ namespace PktParser::Misc
 			GuidTypeToString(GetType()), GetSubType(), GetRealmId(), GetServerId(), GetMapId(), GetLow());
 	}
 
-	WowGuid128 ReadGuid128(BitReader& reader)
+    std::string WowGuid128::ToHexString() const
+    {
+		if (IsEmpty())
+			return "0";
+		return fmt::format("{:016X}{:016X}", High, Low);
+    }
+
+    WowGuid128 ReadGuid128(BitReader& reader)
 	{
 		WowGuid128 guid;
 		guid.Low = reader.ReadUInt64();

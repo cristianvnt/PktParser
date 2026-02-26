@@ -11,14 +11,14 @@ services:
       - CASSANDRA_CLUSTER_NAME=${CASSANDRA_CLUSTER_NAME}
       - CASSANDRA_SEEDS=cassandra-head
       - CASSANDRA_LISTEN_ADDRESS=auto
-      - CASSANDRA_BROADCAST_ADDRESS=cassandra-head
+      - CASSANDRA_BROADCAST_ADDRESS=cass-head
       - CASSANDRA_DC=${CASSANDRA_DC}
       - CASSANDRA_ENDPOINT_SNITCH=GossipingPropertyFileSnitch
       - MAX_HEAP_SIZE=${CASSANDRA_HEAP}
       - HEAP_NEWSIZE=${CASSANDRA_NEWGEN}
     mem_limit: ${CASSANDRA_MEM_LIMIT}
     volumes:
-      - cassandra-node-head:/var/lib/cassandra
+      - cassandra-data:/var/lib/cassandra
       - ./config/cassandra.yaml:/etc/cassandra/cassandra.yaml
     restart: on-failure
     healthcheck:
@@ -50,10 +50,32 @@ services:
       timeout: 10s
       retries: 5
 
+  postgres:
+    image: postgres:17
+    container_name: pg-node
+    ports:
+      - ${POSTGRES_PORT}:5432
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+      - ./scripts/create/postgres.sql:/docker-entrypoint-initdb.d/01-schema.sql
+    restart: on-failure
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 15s
+      start_period: 30s
+      timeout: 5s
+      retries: 5
+
 networks:
   cassandra-net:
     driver: bridge
 
 volumes:
-  cassandra-node-head:
+  cassandra-data:
   es-data:
+  pg-data:
+    

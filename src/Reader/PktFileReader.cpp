@@ -1,60 +1,10 @@
 #include "pchdef.h"
 #include "PktFileReader.h"
 
-#include <fcntl.h>
-#include <unistd.h>
-#include <sys/mman.h>
-#include <sys/stat.h>
-
 using namespace PktParser::Enums;
 
 namespace PktParser::Reader
 {
-	PktFileReader::PktFileReader(std::string const& filepath)
-		: _fd{ -1 }, _mappedData{ nullptr }, _fileSize{ 0 }, _position{ 0 },
-		_filepath{ filepath }, _fileHeader{}, _pktNumber{ 0 }
-	{
-		
-		_fd = open(filepath.c_str(), O_RDONLY);
-		if (_fd < 0)
-			throw ParseException{ "Failed to open: " + filepath };
-
-		struct stat sb;
-		if (fstat(_fd, &sb) < 0)
-		{
-			close(_fd);
-			throw ParseException{ "Failed to stat: " + filepath };
-		}
-		
-		_fileSize = static_cast<size_t>(sb.st_size);
-
-		if (_fileSize == 0)
-		{
-			close(_fd);
-			throw ParseException{ "Empty file: " + filepath };
-		}
-
-		void* mapped = mmap(nullptr, _fileSize, PROT_READ, MAP_PRIVATE, _fd, 0);
-		if (mapped == MAP_FAILED)
-		{
-			close(_fd);
-			throw ParseException{ "Failed to mmap: " + filepath };
-		}
-
-		_mappedData = static_cast<uint8 const*>(mapped);
-
-		madvise(const_cast<uint8*>(_mappedData), _fileSize, MADV_SEQUENTIAL);
-	}
-
-	PktFileReader::~PktFileReader()
-	{
-		if (_mappedData)
-			munmap(const_cast<uint8*>(_mappedData), _fileSize);
-
-		if (_fd >= 0)
-			close(_fd);
-	}
-
 	void PktFileReader::ParseFileHeader()
 	{
 		char magik[3];
@@ -88,7 +38,7 @@ namespace PktParser::Reader
 		{
 			PktHeader header = ParsePacketHeader();
 
-			if (_position + header.packetLength > _fileSize)
+			if (_position + header.packetLength > _mmapFile.GetSize())
             	return std::nullopt;
 
 			std::vector<uint8> pktData(header.packetLength);

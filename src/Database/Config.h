@@ -16,6 +16,7 @@ namespace PktParser::Db
         static std::string GetPostgresConnectionString();
         static std::string GetCassandraHost();
         static std::string GetCassandraKeyspace();
+        static std::string GetEnv(char const* name);
     };
 }
 

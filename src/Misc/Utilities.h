@@ -130,7 +130,11 @@ namespace PktParser::Misc
 
 		std::time_t tt = static_cast<std::time_t>(sec);
 		std::tm tm;
+#ifndef _WIN32
 		localtime_r(&tt, &tm);
+#else
+		localtime_s(&tm, &tt);
+#endif
 
 		char buffer[64];
 		std::strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", &tm);

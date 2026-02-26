@@ -9,6 +9,7 @@
 #include "Misc/Define.h"
 #include "BitReader.h"
 #include "Enums/Direction.h"
+#include "IO/MMapFile.h"
 
 namespace PktParser::Reader
 {
@@ -44,9 +45,7 @@ namespace PktParser::Reader
 	class PktFileReader
 	{
 	private:
-		int _fd;
-		const uint8* _mappedData;
-		size_t _fileSize;
+		IO::MMapFile _mmapFile;
 		size_t _position;
 
 		std::string _filepath;
@@ -54,8 +53,8 @@ namespace PktParser::Reader
 		uint32 _pktNumber;
 
 	public:
-		explicit PktFileReader(std::string const& filepath);
-		~PktFileReader();
+		explicit PktFileReader(std::string const& filepath) : _mmapFile{ filepath }, _position{ 0 }, _filepath{ filepath }, _fileHeader{}, _pktNumber{ 0 } {}
+		~PktFileReader() = default;
 
 		PktFileReader(PktFileReader const&) = delete;
 		PktFileReader& operator=(PktFileReader const&) = delete;
@@ -66,9 +65,9 @@ namespace PktParser::Reader
 		PktFileHeader const& GetFileHeader() const { return _fileHeader; }
 		uint32 GetBuildVersion() const { return _fileHeader.clientBuild; }
 		int GetPacketNumber() const { return _pktNumber; }
-		bool IsOpen() const { return _mappedData != nullptr; }
+		bool IsOpen() const { return _mmapFile.GetData() != nullptr; }
 		std::string const& GetFilePath() const { return _filepath; }
-		size_t GetFileSize() const { return _fileSize; }
+		size_t GetFileSize() const { return _mmapFile.GetSize(); }
 		uint32 GetStartTime() const { return _fileHeader.startTime; }
 
 	private:
@@ -78,33 +77,33 @@ namespace PktParser::Reader
 		template<typename T>
 		T Read()
 		{
-			if (_position + sizeof(T) > _fileSize)
+			if (_position + sizeof(T) > _mmapFile.GetSize())
 				throw ParseException{ "Read past EOF" };
 
 			T value;
-			std::memcpy(&value, _mappedData + _position, sizeof(T));
+			std::memcpy(&value, _mmapFile.GetData() + _position, sizeof(T));
 			_position += sizeof(T);
 			return value;
 		}
 
 		void ReadInto(void* dst, size_t count)
 		{
-			if (_position + count > _fileSize)
+			if (_position + count > _mmapFile.GetSize())
 				throw ParseException{ "Read past EOF" };
 
-			std::memcpy(dst, _mappedData + _position, count);
+			std::memcpy(dst, _mmapFile.GetData() + _position, count);
 			_position += count;
 		}
 
 		void Skip(size_t bytes)
 		{
-			if (_position + bytes > _fileSize)
+			if (_position + bytes > _mmapFile.GetSize())
 				throw ParseException{ "Read past EOF" };
 				
 			_position += bytes;
 		}
 
-		bool AtEnd() const { return _position >= _fileSize; }
+		bool AtEnd() const { return _position >= _mmapFile.GetSize(); }
 	};
 }
 

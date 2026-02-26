@@ -1,0 +1,15 @@
+{
+  "name": "pktparser",
+  "version": "1.0.0",
+  "description": "High-performance WPP",
+  "dependencies": [
+    "fmt",
+    "libpqxx",
+    "zlib",
+    "curl",
+    "zstd",
+    "openssl",
+    "drogon",
+    "libuv"
+  ]
+}

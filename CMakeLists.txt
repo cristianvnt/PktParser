@@ -33,27 +33,26 @@ find_package(CURL REQUIRED)
 find_package(zstd REQUIRED)
 find_package(OpenSSL REQUIRED)
 find_package(libpqxx REQUIRED)
-find_package(libuv CONFIG REQUIRED)
 
-if (WIN32)
-	set(CASSANDRA_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/deps/cassandra-cpp-driver)
-	
-	set(CASSANDRA_LIB ${CASSANDRA_ROOT}/lib/cassandra.lib)
-	set(CASSANDRA_DLL ${CASSANDRA_ROOT}/bin/cassandra.dll)
+# windows cassandra shenanigans
+include(FetchContent)
+set(CASS_BUILD_STATIC ON CACHE BOOL "" FORCE)
+set(CASS_BUILD_SHARED OFF CACHE BOOL "" FORCE)
+set(CASS_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(CASS_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(CASS_BUILD_UNIT_TESTS OFF CACHE BOOL "" FORCE)
+set(CASS_BUILD_INTEGRATION_TESTS OFF CACHE BOOL "" FORCE)
+set(CASS_USE_OPENSSL ON CACHE BOOL "" FORCE)
+set(CMAKE_POLICY_VERSION_MINIMUM 3.5 CACHE STRING "" FORCE)
 
-	if (NOT EXISTS "${CASSANDRA_LIB}" OR NOT EXISTS "${CASSANDRA_DLL}")
-		message(FATAL_ERROR "Cassandra library files not found in ${CASSANDRA_ROOT}")
-	endif()
-
-	add_library(Cassandra::Cassandra SHARED IMPORTED GLOBAL)
-	set_target_properties(Cassandra::Cassandra PROPERTIES
-		IMPORTED_LOCATION ${CASSANDRA_DLL}
-		IMPORTED_IMPLIB ${CASSANDRA_LIB}
-		INTERFACE_INCLUDE_DIRECTORIES ${CASSANDRA_ROOT}/include
-	)
-else()
-    message(FATAL_ERROR "NYI")
-endif()
+FetchContent_Declare(cassandra-cpp-driver
+    GIT_REPOSITORY https://github.com/apache/cassandra-cpp-driver.git
+    GIT_TAG 2.17.1
+    PATCH_COMMAND ${CMAKE_COMMAND} -DSOURCE_DIR=<SOURCE_DIR> -P ${CMAKE_SOURCE_DIR}/cmake/patch_cassandra_msvc.cmake
+)
+FetchContent_MakeAvailable(cassandra-cpp-driver)
+FetchContent_GetProperties(cassandra-cpp-driver SOURCE_DIR CASS_SOURCE_DIR)
+target_include_directories(cassandra_static INTERFACE ${CASS_SOURCE_DIR}/include)
 
 # optional
 find_package(Drogon CONFIG)
@@ -79,6 +78,8 @@ set(PCH_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/src/PCH/pchdef.cpp")
 file(GLOB_RECURSE SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp)
 add_executable(${PROJECT_NAME} ${PCH_SOURCE} ${SOURCES})
 target_precompile_headers(${PROJECT_NAME} PRIVATE ${PCH_HEADER})
+
+target_compile_definitions(${PROJECT_NAME} PRIVATE CASS_STATIC)
 
 # compiler flags
 if (MSVC)
@@ -122,10 +123,9 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 	Threads::Threads
 	CURL::libcurl
 	zstd::libzstd_shared
-	$<IF:$<TARGET_EXISTS:libuv::uv_a>,libuv::uv_a,libuv::uv>
 	OpenSSL::SSL
 	OpenSSL::Crypto
-	Cassandra::Cassandra
+	cassandra_static
 )
 
 if (Drogon_FOUND)
@@ -133,11 +133,12 @@ if (Drogon_FOUND)
 endif()
 
 if (WIN32)
-	add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-		COMMAND ${CMAKE_COMMAND} -E copy_if_different
-		${CASSANDRA_DLL}
-		$<TARGET_FILE_DIR:${PROJECT_NAME}>
-	)
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        $<TARGET_RUNTIME_DLLS:${PROJECT_NAME}>
+        $<TARGET_FILE_DIR:${PROJECT_NAME}>
+        COMMAND_EXPAND_LISTS
+    )
 endif()
 
 if (NOT WIN32 AND JEMALLOC_LIB)

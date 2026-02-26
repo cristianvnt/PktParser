@@ -1,4 +1,4 @@
-#include "MMapFIle.h"
+#include "MMapFile.h"
 #include "Misc/Exceptions.h"
 
 #ifdef _WIN32

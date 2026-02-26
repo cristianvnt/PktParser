@@ -5,21 +5,19 @@ services:
     ports:
       - ${CASSANDRA_PORT}:9042
       - 7000:7000
-    networks:
-      - cassandra-net
     environment:
-      - CASSANDRA_CLUSTER_NAME=${CASSANDRA_CLUSTER_NAME}
-      - CASSANDRA_SEEDS=cassandra-head
       - CASSANDRA_LISTEN_ADDRESS=auto
-      - CASSANDRA_BROADCAST_ADDRESS=cass-head
-      - CASSANDRA_DC=${CASSANDRA_DC}
-      - CASSANDRA_ENDPOINT_SNITCH=GossipingPropertyFileSnitch
+      - CASSANDRA_BROADCAST_RPC_ADDRESS=127.0.0.1
       - MAX_HEAP_SIZE=${CASSANDRA_HEAP}
       - HEAP_NEWSIZE=${CASSANDRA_NEWGEN}
     mem_limit: ${CASSANDRA_MEM_LIMIT}
     volumes:
       - cassandra-data:/var/lib/cassandra
       - ./config/cassandra.yaml:/etc/cassandra/cassandra.yaml
+      - ./scripts:/scripts
+      - ./tools:/tools
+      - ./csv:/csv
+      - sstable_output:/sstable_output
     restart: on-failure
     healthcheck:
       test: ["CMD-SHELL", "cqlsh -e 'SELECT now() FROM system.local'"]
@@ -35,11 +33,14 @@ services:
       - discovery.type=single-node
       - xpack.security.enabled=false
       - ES_JAVA_OPTS=-Xms${ES_HEAP} -Xmx${ES_HEAP}
+      - bootstrap.memory_lock=true
     mem_limit: ${ES_MEM_LIMIT}
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
     ports:
       - 9200:9200
-    networks:
-      - cassandra-net
     volumes:
       - es-data:/usr/share/elasticsearch/data
     restart: on-failure
@@ -51,7 +52,7 @@ services:
       retries: 5
 
   postgres:
-    image: postgres:17
+    image: ${POSTGRES_IMAGE}
     container_name: pg-node
     ports:
       - ${POSTGRES_PORT}:5432
@@ -70,12 +71,9 @@ services:
       timeout: 5s
       retries: 5
 
-networks:
-  cassandra-net:
-    driver: bridge
-
 volumes:
   cassandra-data:
   es-data:
   pg-data:
+  sstable_output:
     

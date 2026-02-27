@@ -89,16 +89,20 @@ namespace PktParser::Db
     void ElasticClient::IndexPacket(PktHeader const& header, char const* opcodeName, uint32 build, uint32 pktNumber,
         ParseResult const& result, std::string const& srcFile, std::string const& fileId)
     {
-        if (!result.spellFields)
+        if (!result.searchFields)
             return;
-
 
         JsonWriter doc(512);
         doc.BeginObject();
         WriteBaseDocument(doc, header, opcodeName, build, pktNumber, srcFile, fileId);
 
-        if (result.spellFields)
-            WriteSpellFields(doc, *result.spellFields);
+        std::visit([&](auto const& fields)
+        {
+            using T = std::decay_t<decltype(fields)>;
+            if constexpr (std::is_same_v<T, SpellSearchFields>)
+                WriteSpellFields(doc, fields);
+            
+        }, *result.searchFields);
 
         doc.EndObject();
         BufferDocument(doc.GetString(), fileId, pktNumber);

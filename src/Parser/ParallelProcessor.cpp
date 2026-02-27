@@ -56,7 +56,7 @@ namespace PktParser
                 if (_toCSV)
                 {
                     std::vector<uint8> compressed;
-                    if (pktDataOptResult->storeAsJson)
+                    if (!pktDataOptResult->json.empty())
                         compressed = Misc::CompressJson(pktDataOptResult->json);
                     else
                         compressed = Misc::CompressData(pkt.data);

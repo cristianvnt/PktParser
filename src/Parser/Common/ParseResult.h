@@ -5,6 +5,7 @@
 
 #include <string>
 #include <optional>
+#include <variant>
 
 namespace PktParser::Common
 {
@@ -20,11 +21,12 @@ namespace PktParser::Common
         int32 mapId;
     };
 
+    using SearchFields = std::variant<SpellSearchFields>;
+
     struct ParseResult
     {
         std::string json;
-        std::optional<SpellSearchFields> spellFields;
-        bool storeAsJson;
+        std::optional<SearchFields> searchFields;
     };
 }
 

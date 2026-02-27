@@ -20,7 +20,7 @@ namespace PktParser::Common::Parsers::AuthHandlers
         JsonWriter w(256);
         serializer->WriteAuthChallenge(w, authData);
 
-        return ParseResult{ w.TakeString(), std::nullopt, false };
+        return ParseResult{ "", std::nullopt };
     }
 }
 

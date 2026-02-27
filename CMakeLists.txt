@@ -4,6 +4,14 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING "Build type" FORCE)
+endif()
+
+if(DEFINED ENV{VCPKG_ROOT})
+    set(CMAKE_TOOLCHAIN_FILE "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" CACHE STRING "")
+endif()
+
 project(PktParser)
 
 # ccache
@@ -15,26 +23,32 @@ endif()
 
 # dependencies
 include(FetchContent)
-
-set(BUILD_DOC OFF CACHE BOOL "" FORCE)
-set(BUILD_TEST OFF CACHE BOOL "" FORCE)
-set(SKIP_BUILD_TEST ON CACHE BOOL "" FORCE)
-
-FetchContent_Declare(libpqxx
-    GIT_REPOSITORY https://github.com/jtv/libpqxx.git
-    GIT_TAG 7.10.4
+set(CASS_BUILD_STATIC ON CACHE BOOL "" FORCE)
+set(CASS_BUILD_SHARED OFF CACHE BOOL "" FORCE)
+set(CASS_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(CASS_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(CASS_BUILD_UNIT_TESTS OFF CACHE BOOL "" FORCE)
+set(CASS_BUILD_INTEGRATION_TESTS OFF CACHE BOOL "" FORCE)
+set(CASS_USE_OPENSSL ON CACHE BOOL "" FORCE)
+set(CMAKE_POLICY_VERSION_MINIMUM 3.5 CACHE STRING "" FORCE)
+FetchContent_Declare(cassandra-cpp-driver
+    GIT_REPOSITORY https://github.com/apache/cassandra-cpp-driver.git
+    GIT_TAG 2.17.1
 )
-FetchContent_MakeAvailable(libpqxx)
+FetchContent_MakeAvailable(cassandra-cpp-driver)
+FetchContent_GetProperties(cassandra-cpp-driver SOURCE_DIR CASS_SOURCE_DIR)
+target_include_directories(cassandra_static INTERFACE ${CASS_SOURCE_DIR}/include)
+add_compile_definitions(CASS_STATIC)
 
+# vcpkg dependencies
 find_package(fmt REQUIRED)
 find_package(ZLIB REQUIRED)
 find_package(Threads REQUIRED)
 find_package(CURL REQUIRED)
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(ZSTD REQUIRED libzstd)
+find_package(zstd REQUIRED)
 find_package(OpenSSL REQUIRED)
+find_package(libpqxx REQUIRED)
 
-list(APPEND CMAKE_PREFIX_PATH /usr/local)
 find_package(Drogon)
 if (Drogon_FOUND)
 	message(STATUS "Drogon found - API server mode enabled")
@@ -43,8 +57,10 @@ else()
 	message(STATUS "Drogon not found - API server mode disabled")
 endif()
 
-find_library(CASSANDRA_LIBRARY NAMES cassandra REQUIRED)
-find_path(CASSANDRA_INCLUDE_DIR NAMES cassandra.h REQUIRED)
+find_library(JEMALLOC_LIB jemalloc)
+if(JEMALLOC_LIB)
+    message(STATUS "Found jemalloc: ${JEMALLOC_LIB}")
+endif()
 
 # PCH
 set(PCH_HEADER "${CMAKE_CURRENT_SOURCE_DIR}/src/PCH/pchdef.h")
@@ -80,20 +96,19 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 	${CMAKE_CURRENT_SOURCE_DIR}/src/Parser
 	${CMAKE_CURRENT_SOURCE_DIR}/src/Parser/Versions
 	${CMAKE_CURRENT_SOURCE_DIR}/src/Parser/Common
-	${CASSANDRA_INCLUDE_DIR}
-	${ZSTD_INCLUDE_DIRS}
 )
 
 # libs
 target_link_libraries(${PROJECT_NAME} PRIVATE 
 	fmt::fmt
 	pqxx
-	${CASSANDRA_LIBRARY}
-	${ZLIB_LIBRARIES}
+	ZLIB::ZLIB
 	Threads::Threads
-	CURL::libcurl
-	${ZSTD_LIBRARIES}
-	OpenSSL::Crypto
+    CURL::libcurl
+    zstd::libzstd_shared
+    OpenSSL::SSL
+    OpenSSL::Crypto
+    cassandra_static
 )
 
 if(Drogon_FOUND)

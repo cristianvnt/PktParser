@@ -10,7 +10,7 @@ echo ">>> Installing build tools..."
 sudo apt-get update
 sudo apt-get install -y \
     build-essential gcc-13 g++-13 cmake git wget curl ninja-build \
-    libjemalloc-dev libreadline-dev libffi-dev
+    libjemalloc-dev libreadline-dev libffi-dev bison flex autoconf
 
 echo ">>> Installing vcpkg..."
 if [ ! -d "$HOME/vcpkg" ]; then

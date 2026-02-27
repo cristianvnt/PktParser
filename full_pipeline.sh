@@ -16,13 +16,15 @@ PARSER_VERSION="${2:-}"
 CSV_DIR="./csv"
 SSTABLE_OUT="./sstable_output"
 
-rm -rf "$CSV_DIR"/*.csv "$SSTABLE_OUT"
+mkdir -p "$CSV_DIR" "$SSTABLE_OUT"
+mountpoint -q "$CSV_DIR" || sudo mount -t tmpfs -o size=2G tmpfs "$CSV_DIR"
+mountpoint -q "$SSTABLE_OUT" || sudo mount -t tmpfs -o size=3G tmpfs "$SSTABLE_OUT"
 
 cleanup()
 {
     curl -s -X PUT "http://localhost:9200/wow_packets/_settings" \
         -H "Content-Type: application/json" -d '{"refresh_interval": "5s"}' > /dev/null
-    rm -rf "$CSV_DIR"/*.csv "$SSTABLE_OUT"
+    rm -rf "$CSV_DIR"/*.csv "$SSTABLE_OUT"/wow_packets
 }
 trap cleanup EXIT
 

@@ -175,8 +175,15 @@ namespace PktParser::Common
 
         void EscapeString(std::string const& s)
         {
-            for (char c : s)
+            size_t start = 0;
+            for (size_t i = 0; i < s.size(); ++i)
             {
+                char c = s[i];
+                if (c != '"' && c != '\\' && c != '\n' && c != '\r' && c != '\t' && static_cast<unsigned char>(c) >= 0x20)
+                    continue;
+                
+                _buffer.append(s, start, i - start);
+
                 switch (c)
                 {
                 case '"':
@@ -195,20 +202,28 @@ namespace PktParser::Common
                     _buffer += "\\t";
                     break;
                 default:
-                    if (static_cast<unsigned char>(c) < 0x20)
-                        fmt::format_to(std::back_inserter(_buffer), "\\u{:04x}", static_cast<unsigned char>(c));
-                    else
-                        _buffer += c;
+                    fmt::format_to(std::back_inserter(_buffer), "\\u{:04x}", static_cast<unsigned char>(c));
                     break;
                 }
+                start = i + 1;
             }
+            _buffer.append(s, start, s.size() - start);
         }
 
         void EscapeString(char const* s)
         {
+            char const* start = s;
             while (*s)
             {
-                char c = *s++;
+                char c = *s;
+                if (c != '"' && c != '\\' && c != '\n' && c != '\r' && c != '\t' && static_cast<unsigned char>(c) >= 0x20)
+                {
+                    ++s;
+                    continue;
+                }
+
+                _buffer.append(start, s - start);
+
                 switch (c)
                 {
                 case '"':
@@ -227,13 +242,12 @@ namespace PktParser::Common
                     _buffer += "\\t";
                     break;
                 default:
-                    if (static_cast<unsigned char>(c) < 0x20)
-                        fmt::format_to(std::back_inserter(_buffer), "\\u{:04x}", static_cast<unsigned char>(c));
-                    else
-                        _buffer += c;
+                    fmt::format_to(std::back_inserter(_buffer), "\\u{:04x}", static_cast<unsigned char>(c));
                     break;
                 }
+                start = ++s;
             }
+            _buffer.append(start, s - start);
         }
     };
 }

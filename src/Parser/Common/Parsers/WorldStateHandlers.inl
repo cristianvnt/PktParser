@@ -17,9 +17,6 @@ namespace PktParser::Common::Parsers::WorldStateHandlers
         reader.ResetBitReader();
         bool hidden = reader.ReadBit();
 
-        JsonWriter w(128);
-        serializer->WriteUpdateWorldState(w, worldStateInfo, hidden);
-
         return ParseResult{ "", std::nullopt };
     }
 }

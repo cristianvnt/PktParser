@@ -17,9 +17,6 @@ namespace PktParser::Common::Parsers::AuthHandlers
         
         Structures::Packed::AuthChallengeData const* authData = reader.ReadChunk<Structures::Packed::AuthChallengeData>();
 
-        JsonWriter w(256);
-        serializer->WriteAuthChallenge(w, authData);
-
         return ParseResult{ "", std::nullopt };
     }
 }

@@ -24,23 +24,25 @@ cleanup()
 {
     curl -s -X PUT "http://localhost:9200/wow_packets/_settings" \
         -H "Content-Type: application/json" -d '{"refresh_interval": "5s"}' > /dev/null
-    rm -rf "$CSV_DIR"/*.csv "$SSTABLE_OUT"/wow_packets
+
+    # unmount
+    mountpoint -q "$CSV_DIR" && sudo umount "$CSV_DIR"
+    mountpoint -q "$SSTABLE_OUT" && sudo umount "$SSTABLE_OUT"
+
+    rm -rf "$CSV_DIR"/*.csv
+    rm -rf "$SSTABLE_OUT"/*
+    touch "$SSTABLE_OUT/.gitkeep"
 }
 trap cleanup EXIT
 
 curl -s -X PUT "http://localhost:9200/wow_packets/_settings" \
     -H "Content-Type: application/json" -d '{"refresh_interval": "-1"}' > /dev/null
 
-echo ">>>>> BULK LOAD PIPELINE <<<<<"
+echo ">>>>> BULK LOAD PIPELINE <<<<<" > pipeline.log
 time {
     ./build/PktParser "$PKT_PATH" --export ${PARSER_VERSION:+--parser-version "$PARSER_VERSION"}
-
-    # log sstable + loader
-    exec > >(stdbuf -oL tee -a pipeline.log) 2>&1
-
-    ./utils/run_sstable.sh "$CSV_DIR" "$SSTABLE_OUT"
-
-    sstableloader -d 127.0.0.1 "$SSTABLE_OUT/wow_packets/packets/"
+    ./utils/run_sstable.sh "$CSV_DIR" "$SSTABLE_OUT" 2>&1 | tee -a pipeline.log
+    sstableloader -d 127.0.0.1 "$SSTABLE_OUT/wow_packets/packets/" 2>&1 | tee -a pipeline.log
 }
 
 curl -s -X POST "http://localhost:9200/wow_packets/_forcemerge?max_num_segments=1&wait_for_completion=false" > /dev/null

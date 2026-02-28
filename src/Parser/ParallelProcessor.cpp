@@ -12,6 +12,8 @@ using namespace PktParser::Common;
 
 namespace PktParser
 {
+    static thread_local std::string t_csvLine;
+
     ParallelProcessor::ParallelProcessor(Db::Database* db, size_t threadCount /*= 0*/, bool toCSV /*= false*/)
         : _db{ db }, _threadCount{ threadCount }, _toCSV{ toCSV }
     {
@@ -38,7 +40,7 @@ namespace PktParser
             worker.join();
     }
 
-    void ParallelProcessor::ProcessBatch(BatchWork const& work, Db::ElasticClient& es, std::ofstream& csvFile, ZSTD_CCtx* cctx)
+    void ParallelProcessor::ProcessBatch(BatchWork const& work, Db::ElasticClient& es, FILE* csvFile, ZSTD_CCtx* cctx)
     {
         for (Pkt const& pkt : work.Packets)
         {
@@ -56,21 +58,21 @@ namespace PktParser
                 if (_toCSV)
                 {
                     std::span<uint8 const> compressed;
+                    std::string_view b64;
                     if (!pktDataOptResult->json.empty())
+                    {
                         compressed = Misc::CompressJson(pktDataOptResult->json, cctx);
+                        b64 = Misc::Base64Encode(compressed.data(), compressed.size());
+                    }
                     else
-                        compressed = Misc::CompressData(pkt.data, cctx);
-                    std::string_view b64 = Misc::Base64Encode(compressed.data(), compressed.size());
+                        b64 = Misc::Base64Encode(pkt.data.data(), pkt.data.size());
 
-                    csvFile << work.Build << ","
-                        << work.FileIdStr << ","
-                        << (pkt.pktNumber / 10000) << ","
-                        << pkt.pktNumber << ","
-                        << static_cast<int>(pkt.header.direction) << ","
-                        << (pkt.header.packetLength - 4) << ","
-                        << pkt.header.opcode << ","
-                        << static_cast<int64>(pkt.header.timestamp) << ","
-                        << b64 << "\n";
+                    t_csvLine.clear();
+                    fmt::format_to(std::back_inserter(t_csvLine), "{},{},{},{},{},{},{},{},{}\n",
+                        work.Build, work.FileIdStr, pkt.pktNumber / 10000, pkt.pktNumber, static_cast<int>(pkt.header.direction),
+                        pkt.header.packetLength - 4, pkt.header.opcode, static_cast<int64>(pkt.header.timestamp), b64);
+
+                    fwrite(t_csvLine.data(), 1, t_csvLine.size(), csvFile);
 
                     es.IndexPacket(pkt.header, opcodeName, work.Build, pkt.pktNumber, *pktDataOptResult, work.SrcFile, work.FileIdStr);
                 }
@@ -98,11 +100,12 @@ namespace PktParser
         ZSTD_CCtx* cctx = ZSTD_createCCtx();
         ZSTD_CCtx_setParameter(cctx, ZSTD_c_compressionLevel, 6);
 
-        std::ofstream csvFile;
+        FILE* csvFile = nullptr;
         if (_toCSV)
         {
             std::string path = fmt::format("csv/pkt_thread_{}.csv", threadNumber);
-            csvFile.open(path);
+            csvFile = fopen(path.c_str(), "w");
+            setvbuf(csvFile, nullptr, _IOFBF, 1 << 16);
         }
 
         while (true)
@@ -138,6 +141,9 @@ namespace PktParser
         }
 
         es.FlushThread();
+
+        if (csvFile)
+            fclose(csvFile);
     }
 
     ParallelProcessor::Stats ParallelProcessor::ProcessFile(PktFileReader& reader, IVersionParser* parser, uint32 build, std::string const& parserVersion)

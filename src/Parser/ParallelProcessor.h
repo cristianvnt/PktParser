@@ -58,7 +58,7 @@ namespace PktParser
         std::atomic<size_t> _batchesCompleted{ 0 };
 	    std::condition_variable _completionCV;
         
-        void ProcessBatch(BatchWork const& work, Db::ElasticClient& es, std::ofstream& csvFile, ZSTD_CCtx* cctx);
+        void ProcessBatch(BatchWork const& work, Db::ElasticClient& es, FILE* csvFile, ZSTD_CCtx* cctx);
         void WorkerThread(size_t threadCount);
 
     public:

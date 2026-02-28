@@ -60,7 +60,7 @@ namespace PktParser
                         compressed = Misc::CompressJson(pktDataOptResult->json, cctx);
                     else
                         compressed = Misc::CompressData(pkt.data, cctx);
-                    std::string b64 = Misc::Base64Encode(compressed.data(), compressed.size());
+                    std::string_view b64 = Misc::Base64Encode(compressed.data(), compressed.size());
 
                     csvFile << work.Build << ","
                         << work.FileIdStr << ","

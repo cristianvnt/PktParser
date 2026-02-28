@@ -4,14 +4,12 @@
 #include <string>
 #include <ctime>
 #include <fmt/core.h>
-#include <openssl/bio.h>
-#include <openssl/evp.h>
-#include <openssl/buffer.h>
 #include <cassandra.h>
 #include <zstd.h>
 #include <filesystem>
 #include <vector>
 #include <span>
+#include <string_view>
 
 #include "Define.h"
 #include "Enums/Direction.h"
@@ -104,23 +102,47 @@ namespace PktParser::Misc
         return std::span<uint8 const>(t_compressBuffer.data(), compressedSize);
     }
 
-	inline std::string Base64Encode(uint8 const* data, size_t len)
+	inline thread_local std::string t_base64Buffer;
+	inline std::string_view Base64Encode(uint8 const* data, size_t len)
 	{
-		BIO* b64 = BIO_new(BIO_f_base64());
-		BIO* mem = BIO_new(BIO_s_mem());
-		b64 = BIO_push(b64, mem);
+		static constexpr char table[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+		size_t outSize = ((len + 2) / 3) * 4;
 
-		BIO_set_flags(b64, BIO_FLAGS_BASE64_NO_NL);
-		BIO_write(b64, data, static_cast<int>(len));
-		BIO_flush(b64);
+		if (t_base64Buffer.size() < outSize)
+			t_base64Buffer.resize(outSize);
 
-		BUF_MEM* buffPtr;
-		BIO_get_mem_ptr(b64, &buffPtr);
+		char* out = t_base64Buffer.data();
+		size_t outPos = 0;
+		size_t i = 0;
 
-		std::string result(buffPtr->data, buffPtr->length);
-		BIO_free_all(b64);
-		
-		return result;
+		for (; i + 2 < len; i += 3)
+		{
+			uint32 b = (static_cast<uint32>(data[i]) << 16) | (static_cast<uint32>(data[i + 1]) << 8) | static_cast<uint32>(data[i] + 2);
+			out[outPos++] = table[(b >> 18) & 0x3F];
+			out[outPos++] = table[(b >> 12) & 0x3F];
+			out[outPos++] = table[(b >> 6) & 0x3F];
+			out[outPos++] = table[b & 0x3F];
+		}
+
+		// handle remainder
+		if (i + 1 == len)
+		{
+			uint32 b = static_cast<uint32>(data[i]) << 16;
+			out[outPos++] = table[(b >> 18) & 0x3F];
+			out[outPos++] = table[(b >> 12) & 0x3F];
+			out[outPos++] = '=';
+			out[outPos++] = '=';
+		}
+		else if (i + 2 == len)
+		{
+			uint32 b = (static_cast<uint32>(data[i]) << 16) | (static_cast<uint32>(data[i + 1]) << 8);
+			out[outPos++] = table[(b >> 18) & 0x3F];
+			out[outPos++] = table[(b >> 12) & 0x3F];
+			out[outPos++] = table[(b >> 6) & 0x3F];
+			out[outPos++] = '=';
+		}
+
+		return std::string_view(t_base64Buffer.data(), outPos);
 	}
 
 	template<typename T>

@@ -46,7 +46,6 @@ find_package(ZLIB REQUIRED)
 find_package(Threads REQUIRED)
 find_package(CURL REQUIRED)
 find_package(zstd REQUIRED)
-find_package(OpenSSL REQUIRED)
 find_package(libpqxx REQUIRED)
 
 find_package(Drogon)
@@ -106,8 +105,6 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 	Threads::Threads
     CURL::libcurl
     zstd::libzstd_static
-    OpenSSL::SSL
-    OpenSSL::Crypto
     cassandra_static
 )
 

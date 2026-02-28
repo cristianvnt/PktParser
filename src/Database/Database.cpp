@@ -190,7 +190,7 @@ namespace PktParser::Db
         {
             _totalBytes.fetch_add(jsonStr.size(), std::memory_order_relaxed);
 
-            data->compressedJson = Misc::CompressJson(jsonStr);
+            //data->compressedJson = Misc::CompressJson(jsonStr);
             _totalCompressedBytes.fetch_add(data->compressedJson.size(), std::memory_order_relaxed);
 
             data->build = build;

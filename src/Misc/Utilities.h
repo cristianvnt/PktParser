@@ -11,6 +11,7 @@
 #include <zstd.h>
 #include <filesystem>
 #include <vector>
+#include <span>
 
 #include "Define.h"
 #include "Enums/Direction.h"
@@ -18,7 +19,6 @@
 
 namespace PktParser::Misc
 {
-
 	inline std::vector<std::filesystem::path> CollectPktFiles(std::string const& input)
 	{
 		namespace fs = std::filesystem;
@@ -60,40 +60,48 @@ namespace PktParser::Misc
 
         return uuid;
     }
-	
-	inline std::vector<uint8> CompressJson(std::string const& json, int level = 6)
+
+	inline thread_local std::vector<uint8> t_compressBuffer;
+	inline std::span<uint8 const> CompressJson(std::string const& json, ZSTD_CCtx* cctx)
     {
         size_t maxSize = ZSTD_compressBound(json.size());
-        std::vector<uint8> compressed(maxSize);
+        if (t_compressBuffer.size() < maxSize)
+			t_compressBuffer.resize(maxSize);
 
-        size_t compressedSize = ZSTD_compress(compressed.data(), compressed.size(), json.data(), json.size(), level);
+        size_t compressedSize = ZSTD_compress2(cctx, t_compressBuffer.data(), t_compressBuffer.size(), json.data(), json.size());
 
         if (ZSTD_isError(compressedSize))
         {
             LOG("ZSTD compression failed: {}", ZSTD_getErrorName(compressedSize));
-            compressed.assign(json.begin(), json.end());
-            return compressed;
+			// fallback
+            if (t_compressBuffer.size() < maxSize)
+				t_compressBuffer.resize(maxSize);
+			memcpy(t_compressBuffer.data(), json.data(), json.size());
+        	return std::span<uint8 const>(t_compressBuffer.data(), json.size());
         }
 
-        compressed.resize(compressedSize);
-        return compressed;
+        return std::span<uint8 const>(t_compressBuffer.data(), compressedSize);
     }
 
-	inline std::vector<uint8> CompressData(std::vector<uint8> const& input, int level = 6)
+	inline std::span<uint8 const> CompressData(std::vector<uint8> const& input, ZSTD_CCtx* cctx)
     {
         size_t maxSize = ZSTD_compressBound(input.size());
-        std::vector<uint8> compressed(maxSize);
+        if (t_compressBuffer.size() < maxSize)
+			t_compressBuffer.resize(maxSize);
 
-        size_t compressedSize = ZSTD_compress(compressed.data(), compressed.size(), input.data(), input.size(), level);
+        size_t compressedSize = ZSTD_compress2(cctx, t_compressBuffer.data(), t_compressBuffer.size(), input.data(), input.size());
 
         if (ZSTD_isError(compressedSize))
         {
             LOG("ZSTD compression failed: {}", ZSTD_getErrorName(compressedSize));
-            return input;
+            // fallback
+			if (t_compressBuffer.size() < input.size())
+				t_compressBuffer.resize(input.size());
+			memcpy(t_compressBuffer.data(), input.data(), input.size());
+			return std::span<uint8 const>(t_compressBuffer.data(), input.size());
         }
 
-        compressed.resize(compressedSize);
-        return compressed;
+        return std::span<uint8 const>(t_compressBuffer.data(), compressedSize);
     }
 
 	inline std::string Base64Encode(uint8 const* data, size_t len)

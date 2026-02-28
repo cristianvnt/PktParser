@@ -38,7 +38,7 @@ namespace PktParser
             worker.join();
     }
 
-    void ParallelProcessor::ProcessBatch(BatchWork const& work, Db::ElasticClient& es, std::ofstream& csvFile)
+    void ParallelProcessor::ProcessBatch(BatchWork const& work, Db::ElasticClient& es, std::ofstream& csvFile, ZSTD_CCtx* cctx)
     {
         for (Pkt const& pkt : work.Packets)
         {
@@ -55,11 +55,11 @@ namespace PktParser
 
                 if (_toCSV)
                 {
-                    std::vector<uint8> compressed;
+                    std::span<uint8 const> compressed;
                     if (!pktDataOptResult->json.empty())
-                        compressed = Misc::CompressJson(pktDataOptResult->json);
+                        compressed = Misc::CompressJson(pktDataOptResult->json, cctx);
                     else
-                        compressed = Misc::CompressData(pkt.data);
+                        compressed = Misc::CompressData(pkt.data, cctx);
                     std::string b64 = Misc::Base64Encode(compressed.data(), compressed.size());
 
                     csvFile << work.Build << ","
@@ -95,6 +95,8 @@ namespace PktParser
         static constexpr size_t LOG_EVERY_N_BATCHES = 100;
 
         ElasticClient es;
+        ZSTD_CCtx* cctx = ZSTD_createCCtx();
+        ZSTD_CCtx_setParameter(cctx, ZSTD_c_compressionLevel, 6);
 
         std::ofstream csvFile;
         if (_toCSV)
@@ -124,7 +126,7 @@ namespace PktParser
 
             if (!work.Packets.empty())
             {
-                ProcessBatch(work, es, csvFile);
+                ProcessBatch(work, es, csvFile, cctx);
 
                 _batchesCompleted.fetch_add(1, std::memory_order_relaxed);
                 _completionCV.notify_one();

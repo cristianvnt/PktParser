@@ -3,6 +3,7 @@
 !.env.example
 *.data
 *.wsp
+results.txt
 
 csv/
 tools/sstable/target/

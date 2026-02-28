@@ -18,7 +18,6 @@ done
 echo "Building: $BUILD_TYPE (PARALLEL mode)"
 
 mkdir -p build && cd build
-#cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_CXX_FLAGS="-fno-omit-frame-pointer" ..
 cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE ..
 make -j4
 

@@ -101,11 +101,11 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 # libs
 target_link_libraries(${PROJECT_NAME} PRIVATE 
 	fmt::fmt
-	pqxx
+	libpqxx::pqxx
 	ZLIB::ZLIB
 	Threads::Threads
     CURL::libcurl
-    zstd::libzstd_shared
+    zstd::libzstd_static
     OpenSSL::SSL
     OpenSSL::Crypto
     cassandra_static

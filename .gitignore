@@ -5,10 +5,12 @@
 *.wsp
 results.txt
 
-csv/
+csv/*
+!csv/.gitkeep
+sstable_output/*
+!sstable_output/.gitkeep
 tools/sstable/target/
 dependency-reduced-pom.xml
-sstable_output/
 uploads/
 
 # profiling logs

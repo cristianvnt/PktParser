@@ -117,7 +117,7 @@ namespace PktParser::Misc
 
 		for (; i + 2 < len; i += 3)
 		{
-			uint32 b = (static_cast<uint32>(data[i]) << 16) | (static_cast<uint32>(data[i + 1]) << 8) | static_cast<uint32>(data[i] + 2);
+			uint32 b = (static_cast<uint32>(data[i]) << 16) | (static_cast<uint32>(data[i + 1]) << 8) | static_cast<uint32>(data[i + 2]);
 			out[outPos++] = table[(b >> 18) & 0x3F];
 			out[outPos++] = table[(b >> 12) & 0x3F];
 			out[outPos++] = table[(b >> 6) & 0x3F];

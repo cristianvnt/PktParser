@@ -11,11 +11,10 @@ namespace PktParser::Common::Parsers::AuthHandlers
     using BitReader = PktParser::Reader::BitReader;
 
     template <typename TSerializer>
-    inline ParseResult ParseAuthChallenge(BitReader& reader, TSerializer* serializer)
+    inline ParseResult ParseAuthChallenge(BitReader& reader, [[maybe_unused]] TSerializer* serializer)
     {
         reader.ResetBitReader();
-        
-        Structures::Packed::AuthChallengeData const* authData = reader.ReadChunk<Structures::Packed::AuthChallengeData>();
+        reader.ReadChunk<Structures::Packed::AuthChallengeData>();
 
         return ParseResult{ "", std::nullopt };
     }

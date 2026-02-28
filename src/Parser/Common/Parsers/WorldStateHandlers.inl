@@ -11,11 +11,11 @@ namespace PktParser::Common::Parsers::WorldStateHandlers
     using BitReader = PktParser::Reader::BitReader;
 
     template <typename TSerializer>
-    inline ParseResult ParseUpdateWorldState(BitReader& reader, TSerializer* serializer)
+    inline ParseResult ParseUpdateWorldState(BitReader& reader, [[maybe_unused]] TSerializer* serializer)
     {
-        auto const* worldStateInfo = reader.ReadChunk<Structures::Packed::WorldStateInfo>();
+        reader.ReadChunk<Structures::Packed::WorldStateInfo>();
         reader.ResetBitReader();
-        bool hidden = reader.ReadBit();
+        reader.ReadBit();
 
         return ParseResult{ "", std::nullopt };
     }

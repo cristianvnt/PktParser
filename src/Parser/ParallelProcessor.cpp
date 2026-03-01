@@ -79,7 +79,7 @@ namespace PktParser
                 else
                 {
                     es.IndexPacket(pkt.header, opcodeName, work.Build, pkt.pktNumber, *pktDataOptResult, work.SrcFile, work.FileIdStr);
-                    _db->StorePacket(pkt.header, work.Build, pkt.pktNumber, std::move(pktDataOptResult->json), work.FileId);
+                    _db->StorePacket(pkt.header, work.Build, pkt.pktNumber, pktDataOptResult->json, pkt.data, work.FileId, cctx);
                 }
 
                 _parsedCount.fetch_add(1, std::memory_order_relaxed);

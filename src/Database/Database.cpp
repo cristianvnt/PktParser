@@ -177,7 +177,7 @@ namespace PktParser::Db
         cass_statement_free(stmt);
     }
 
-    void Database::StorePacket(Reader::PktHeader const& header, uint32 build, uint32 pktNumber, std::string&& jsonStr, CassUuid const& fileId)
+    void Database::StorePacket(Reader::PktHeader const& header, uint32 build, uint32 pktNumber, std::string const& json, std::vector<uint8> const& rawData, CassUuid const& fileId, ZSTD_CCtx* cctx)
     {
         while (_pendingCount.load(std::memory_order_relaxed) >= MAX_PENDING)
             std::this_thread::sleep_for(std::chrono::microseconds(100));
@@ -188,9 +188,18 @@ namespace PktParser::Db
 
         try
         {
-            _totalBytes.fetch_add(jsonStr.size(), std::memory_order_relaxed);
+            if (!json.empty())
+            {
+                std::span<uint8 const> compressed = Misc::CompressJson(json, cctx);
+                data->compressedJson.assign(compressed.begin(), compressed.end());
+                _totalBytes.fetch_add(json.size(), std::memory_order_relaxed);
+            }
+            else
+            {
+                data->compressedJson.assign(rawData.begin(), rawData.end());
+                _totalBytes.fetch_add(rawData.size(), std::memory_order_relaxed);
+            }
 
-            //data->compressedJson = Misc::CompressJson(jsonStr);
             _totalCompressedBytes.fetch_add(data->compressedJson.size(), std::memory_order_relaxed);
 
             data->build = build;

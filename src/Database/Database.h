@@ -8,6 +8,7 @@
 #include <atomic>
 #include <vector>
 #include <mutex>
+#include <zstd.h>
 
 namespace PktParser::Db
 {
@@ -78,7 +79,7 @@ namespace PktParser::Db
 		CassSession* GetSession() const { return _session; }
 		
 		void StoreFileMetadata(CassUuid const& fileId, std::string const& srcFile, uint32 build, int64 startTime, uint32 pktCount);
-		void StorePacket(Reader::PktHeader const& header, uint32 build, uint32 pktNumber, std::string&& jsonStr, CassUuid const& fileId);
+		void StorePacket(Reader::PktHeader const& header, uint32 build, uint32 pktNumber, std::string const& json, std::vector<uint8> const& rawData, CassUuid const& fileId, ZSTD_CCtx* cctx);
 		
 		void Flush();
 

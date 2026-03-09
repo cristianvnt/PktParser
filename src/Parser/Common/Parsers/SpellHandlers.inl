@@ -15,6 +15,8 @@ namespace PktParser::Common::Parsers::SpellHandlers
     using BitReader = PktParser::Reader::BitReader;
     using SpellTargetVersion = Enums::SpellTargetVersion;
 
+    static constexpr size_t SPELL_CAST_JSON_RESERVE = 8192;
+
     inline Structures::TargetLocation ReadLocation(BitReader& reader)
     {
         Structures::TargetLocation loc;
@@ -149,7 +151,7 @@ namespace PktParser::Common::Parsers::SpellHandlers
         for (uint32 i = 0; i < data.TargetPointsCount; ++i)
             data.TargetPoints[i] = ReadLocation(reader);
 
-        JsonWriter w(2048);
+        JsonWriter w(SPELL_CAST_JSON_RESERVE);
         serializer->WriteSpellData(w, data);
 
         SpellSearchFields fields;

@@ -73,7 +73,7 @@ namespace PktParser::Common::Parsers::SpellHandlers
             targetData.MapID = reader.ReadUInt32();
 
         targetData.Name = reader.ReadWoWString(nameLength);
-    };
+    }
 
     template <SpellTargetVersion V>
     inline void ReadSpellHealPrediction(BitReader& reader, Structures::SpellHealPrediction& healPrediction)

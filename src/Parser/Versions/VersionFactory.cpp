@@ -7,6 +7,7 @@
 #include "V11_2_7_64632/Parser.h"
 #include "V11_2_7_64877/Parser.h"
 #include "V12_0_0_65390/Parser.h"
+#include "V12_0_1_65818/Parser.h"
 
 using namespace PktParser::Misc;
 
@@ -33,6 +34,8 @@ namespace PktParser::Versions
             ctx.Parser = new V11_2_7_64877::Parser();
         else if (mapping->ParserVersion == "V12_0_0_65390")
             ctx.Parser = new V12_0_0_65390::Parser();
+        else if (mapping->ParserVersion == "V12_0_1_65818")
+            ctx.Parser = new V12_0_1_65818::Parser();
         else
             LOG("ERROR: Unknown parser version: {}", mapping->ParserVersion);
 

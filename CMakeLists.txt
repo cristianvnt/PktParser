@@ -31,11 +31,14 @@ set(CASS_BUILD_UNIT_TESTS OFF CACHE BOOL "" FORCE)
 set(CASS_BUILD_INTEGRATION_TESTS OFF CACHE BOOL "" FORCE)
 set(CASS_USE_OPENSSL ON CACHE BOOL "" FORCE)
 set(CMAKE_POLICY_VERSION_MINIMUM 3.5 CACHE STRING "" FORCE)
+
 FetchContent_Declare(cassandra-cpp-driver
     GIT_REPOSITORY https://github.com/apache/cassandra-cpp-driver.git
     GIT_TAG 2.17.1
 )
 FetchContent_MakeAvailable(cassandra-cpp-driver)
+
+target_compile_options(cassandra_static PRIVATE -Wno-error=stringop-overread)
 FetchContent_GetProperties(cassandra-cpp-driver SOURCE_DIR CASS_SOURCE_DIR)
 target_include_directories(cassandra_static INTERFACE ${CASS_SOURCE_DIR}/include)
 add_compile_definitions(CASS_STATIC)
@@ -77,10 +80,10 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_options(${PROJECT_NAME} PRIVATE -O0 -g3 -Wall -Wextra)
 elseif(CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
     target_compile_options(${PROJECT_NAME} PRIVATE -O2 -g -Wall -Wextra -flto=auto)
-	target_link_options(${PROJECT_NAME} PRIVATE -flto)
+	target_link_options(${PROJECT_NAME} PRIVATE -flto=auto)
 elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
-    target_compile_options(${PROJECT_NAME} PRIVATE -O3 -march=native -flto)
-    target_link_options(${PROJECT_NAME} PRIVATE -flto)
+    target_compile_options(${PROJECT_NAME} PRIVATE -O3 -march=native -flto=auto)
+    target_link_options(${PROJECT_NAME} PRIVATE -flto=auto)
 endif()
 
 find_library(JEMALLOC_LIB jemalloc)

@@ -35,7 +35,7 @@ sudo curl -o /etc/apt/keyrings/apache-cassandra.asc https://downloads.apache.org
 sudo apt-get update
 sudo apt-get install -y cassandra
 
-echo ">>> nstalling Elasticsearch 9.x..."
+echo ">>> Installing Elasticsearch 9.x..."
 if ! dpkg -l | grep -q '^ii.*elasticsearch'; then
     wget -qO - https://artifacts.elastic.co/GPG-KEY-elasticsearch | sudo gpg --dearmor -o /usr/share/keyrings/elasticsearch-keyring.gpg
     echo "deb [signed-by=/usr/share/keyrings/elasticsearch-keyring.gpg] https://artifacts.elastic.co/packages/9.x/apt stable main" | \

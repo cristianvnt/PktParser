@@ -7,6 +7,11 @@ if [ $# -lt 1 ]; then
     exit 1
 fi
 
+if [ ! -f tools/sstable/target/sstable-1.0.jar ]; then
+    echo ">>> Building SSTable tool <<<"
+    (cd tools/sstable && mvn package -q)
+fi
+
 PKT_DIR="$1"
 RAM_GB="${2:-3}"
 

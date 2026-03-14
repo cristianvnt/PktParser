@@ -23,16 +23,8 @@ public class SSTableGenerator
         + "(build, file_id, bucket, packet_number, direction, packet_len, opcode, timestamp, pkt_json) "
         + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
-    public static void main(String[] args) throws Exception
+    static void ProcessCSVs(String csvDir, String outputDir) throws Exception
     {
-        if (args.length < 2)
-        {
-            System.out.println("Usage: java SSTableGenerator <csv_dir> <output_dir>");
-            return;
-        }
-
-        String csvDir = args[0];
-        String outputDir = args[1];
         String outDir = outputDir + "/wow_packets/packets";
         new File(outDir).mkdirs();
 
@@ -43,32 +35,107 @@ public class SSTableGenerator
             .withMaxSSTableSizeInMiB(256)
             .build();
 
-        for (File csvFile : new File(csvDir).listFiles((d, name) -> name.endsWith(".csv")))
+        int totalRows = 0;
+        int skippedRows = 0;
+
+        File[] csvFiles = new File(csvDir).listFiles((d, name) -> name.endsWith(".csv"));
+        if (csvFiles != null)
         {
-            System.out.println("Processing: " + csvFile.getName());
-            
-            try (BufferedReader br = new BufferedReader(new FileReader(csvFile)))
+            for (File csvFile : csvFiles)
             {
-                String line;
-                while ((line = br.readLine()) != null)
+                System.err.println("Processing: " + csvFile.getName());
+                int lineNum = 0;
+
+                try (BufferedReader br = new BufferedReader(new FileReader(csvFile)))
                 {
-                    String[] cols = line.split(",", 9);
-                    writer.addRow(
-                        Integer.parseInt(cols[0]), // build
-                        UUID.fromString(cols[1]), // file_id
-                        Integer.parseInt(cols[2]), // bucket
-                        Integer.parseInt(cols[3]), // packet_number
-                        Byte.parseByte(cols[4]), // direction
-                        Integer.parseInt(cols[5]), // packet_len
-                        Integer.parseInt(cols[6]), // opcode
-                        Long.parseLong(cols[7]), // timestamp
-                        ByteBuffer.wrap(Base64.getDecoder().decode(cols[8])) // pkt_json blob
-                    );
+                    String line;
+                    while ((line = br.readLine()) != null)
+                    {
+                        lineNum++;
+                        try
+                        {
+                            String[] cols = line.split(",", 9);
+                            if (cols.length < 9 || cols[8].isEmpty())
+                            {
+                                System.err.println("WARN: Skipping malformed line " + lineNum + " in " + csvFile.getName());
+                                skippedRows++;
+                                continue;
+                            }
+
+                            writer.addRow(
+                                Integer.parseInt(cols[0]),
+                                UUID.fromString(cols[1]),
+                                Integer.parseInt(cols[2]),
+                                Integer.parseInt(cols[3]),
+                                Byte.parseByte(cols[4]),
+                                Integer.parseInt(cols[5]),
+                                Integer.parseInt(cols[6]),
+                                Long.parseLong(cols[7]),
+                                ByteBuffer.wrap(Base64.getDecoder().decode(cols[8]))
+                            );
+                            totalRows++;
+                        }
+                        catch (Exception e)
+                        {
+                            System.err.println("WARN: Skipping bad line " + lineNum + " in " + csvFile.getName() + ": " + e.getMessage());
+                            skippedRows++;
+                        }
+                    }
                 }
             }
         }
 
         writer.close();
-        System.out.println("SSTables written to: " + outDir);
+        System.err.println("SSTables written: " + totalRows + " rows, " + skippedRows + " skipped");
+    }
+
+    public static void main(String[] args) throws Exception
+    {
+        if (args.length >= 2 && !args[0].equals("--daemon"))
+        {
+            ProcessCSVs(args[0], args[1]);
+            return;
+        }
+
+        if (args.length == 1 && args[0].equals("--daemon"))
+        {
+            // stdout is ONLY for signals - everything else goes to stderr
+            System.out.println(">>READY<<");
+            System.out.flush();
+
+            BufferedReader stdin = new BufferedReader(new InputStreamReader(System.in));
+            String line;
+            while ((line = stdin.readLine()) != null)
+            {
+                line = line.trim();
+                if (line.equals("QUIT"))
+                    break;
+
+                String[] parts = line.split(" ", 2);
+                if (parts.length != 2)
+                {
+                    System.err.println("Bad input: " + line);
+                    System.out.println(">>ERROR: expected <csv_dir> <output_dir><<");
+                    System.out.flush();
+                    continue;
+                }
+
+                try
+                {
+                    ProcessCSVs(parts[0], parts[1]);
+                    System.out.println(">>DONE<<");
+                }
+                catch (Exception e)
+                {
+                    System.err.println("SSTable generation failed: " + e.getMessage());
+                    e.printStackTrace(System.err);
+                    System.out.println(">>ERROR: " + e.getMessage() + "<<");
+                }
+                System.out.flush();
+            }
+            return;
+        }
+
+        System.err.println("Usage: java -jar sstable.jar <csv_dir> <output_dir> | --daemon");
     }
 }

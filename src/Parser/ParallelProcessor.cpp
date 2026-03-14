@@ -72,7 +72,9 @@ namespace PktParser
                         work.Build, work.FileIdStr, pkt.pktNumber / 10000, pkt.pktNumber, static_cast<int>(pkt.header.direction),
                         pkt.header.packetLength - 4, pkt.header.opcode, static_cast<int64>(pkt.header.timestamp), b64);
 
-                    fwrite(t_csvLine.data(), 1, t_csvLine.size(), csvFile);
+                    size_t written = fwrite(t_csvLine.data(), 1, t_csvLine.size(), csvFile);
+                    if (written != t_csvLine.size())
+                        LOG("ERROR: CSV write failed for pkt {} - tmpfs full?", pkt.pktNumber);
 
                     es.IndexPacket(pkt.header, opcodeName, work.Build, pkt.pktNumber, *pktDataOptResult, work.SrcFile, work.FileIdStr);
                 }

@@ -2,23 +2,22 @@
 set -e
 
 if [ $# -lt 1 ]; then
-    echo "Usage: $0 <PKT_directory>"
+    echo "Usage: $0 <PKT_directory> [ram_gb]"
+    echo "-- ram_gb: RAM per tmpfs mount (default: 3, used for both CSV and SSTable)"
     exit 1
 fi
 
-if [ ! -f tools/sstable/target/sstable-1.0.jar ]; then
-    echo ">>> Building SSTable tool <<<"
-    (cd tools/sstable && mvn package -q)
-fi
-
 PKT_DIR="$1"
+RAM_GB="${2:-3}"
+
 CSV_DIR="./csv"
 SSTABLE_OUT="./sstable_output"
-MAX_BATCH_BYTES=$((3 * 1024 * 1024 * 1024))
+MAX_BATCH_BYTES=$(( RAM_GB * 1024 * 1024 * 1024 ))
+TMPFS_SIZE="${RAM_GB}G"
 
 mkdir -p "$CSV_DIR" "$SSTABLE_OUT"
-mountpoint -q "$CSV_DIR" || sudo mount -t tmpfs -o size=3G tmpfs "$CSV_DIR"
-mountpoint -q "$SSTABLE_OUT" || sudo mount -t tmpfs -o size=3G tmpfs "$SSTABLE_OUT"
+mountpoint -q "$CSV_DIR" || sudo mount -t tmpfs -o size="$TMPFS_SIZE" tmpfs "$CSV_DIR"
+mountpoint -q "$SSTABLE_OUT" || sudo mount -t tmpfs -o size="$TMPFS_SIZE" tmpfs "$SSTABLE_OUT"
 
 cleanup()
 {
@@ -83,7 +82,7 @@ while IFS= read -r pkt_file; do
 done < /tmp/pkt_all_files.txt
 
 BATCHES=(/tmp/pkt_batch_*)
-echo "Found $TOTAL_FILES .pkt files -> ${#BATCHES[@]} batches (max ~3GB each)"
+echo "Found $TOTAL_FILES .pkt files -> ${#BATCHES[@]} batches (max ~${RAM_GB}GB each)"
 
 coproc SSTABLE { ./utils/run_sstable.sh --daemon; }
 wait_for_signal

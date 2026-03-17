@@ -86,11 +86,6 @@ elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
     target_link_options(${PROJECT_NAME} PRIVATE -flto=auto)
 endif()
 
-find_library(JEMALLOC_LIB jemalloc)
-if(JEMALLOC_LIB)
-    message(STATUS "Found jemalloc: ${JEMALLOC_LIB}")
-endif()
-
 # include dirs
 target_include_directories(${PROJECT_NAME} PRIVATE 
 	${CMAKE_CURRENT_SOURCE_DIR}/src

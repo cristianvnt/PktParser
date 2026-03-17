@@ -29,13 +29,11 @@ def generate_opcodes_header(namespace: str, opcodes: list, output_path: Path):
     header = f"""// AUTO-GENERATED from database - DO NOT EDIT
 // parser version: {namespace}
 // total opcodes: {len(opcodes)}
-
-#ifndef OPCODES_{namespace.upper()}_H
-#define OPCODES_{namespace.upper()}_H
+#pragma once
 
 #include "Misc/Define.h"
 
-namespace PktParser::Versions::{namespace}::Opcodes
+namespace PktParser::{namespace}::Opcodes
 {{
 """
     
@@ -44,8 +42,6 @@ namespace PktParser::Versions::{namespace}::Opcodes
     
     header += """
 }
-
-#endif
 """
     
     with open(output_path, 'w') as f:
@@ -56,13 +52,11 @@ def generate_registration_file(namespace: str, opcodes: list, opcode_count: int,
 // parser version: {namespace}
 // opcode count: {opcode_count}
 // reserve size: {reserve_size}
-
-#ifndef REGISTER_HANDLERS_{namespace.upper()}_INL
-#define REGISTER_HANDLERS_{namespace.upper()}_INL
+#pragma once
 
 #include "Opcodes.h"
 
-namespace PktParser::Versions::{namespace}
+namespace PktParser::{namespace}
 {{
     constexpr size_t OPCODE_COUNT = {opcode_count};
     constexpr size_t REGISTRY_RESERVE_SIZE = {reserve_size};
@@ -74,12 +68,10 @@ namespace PktParser::Versions::{namespace}
     
     for name, value, direction in opcodes:
         handler_name = to_pascal_case(name)
-        registration += f"        registry.Register(Opcodes::{name}, &ParserType::{handler_name});\n"
+        registration += f"       // registry.Register(Opcodes::{name}, &ParserType::{handler_name});\n"
     
     registration += """    }
 }
-
-#endif
 """
     
     with open(output_path, 'w') as f:

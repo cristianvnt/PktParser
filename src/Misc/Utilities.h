@@ -10,8 +10,10 @@
 #include <vector>
 #include <span>
 #include <string_view>
+#include <algorithm>
 
 #include "Define.h"
+#include "Logger.h"
 #include "Enums/Direction.h"
 #include "Enums/TargetFlags.h"
 

@@ -17,6 +17,9 @@ namespace PktParser::V11_2_5_63506::SearchFields
         fields.casterLow = data.CasterGUID.GetLow();
         fields.mapId = data.CasterGUID.GetMapId();
 
+        for (auto const& guid : data.HitTargets)
+            fields.hitTargetEntries.push_back(guid.GetEntry());
+
         return fields;
     }
 }

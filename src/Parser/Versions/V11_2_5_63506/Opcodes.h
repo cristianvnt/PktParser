@@ -1,13 +1,11 @@
 // AUTO-GENERATED from database - DO NOT EDIT
-// Parser version: V11_2_5_63506
-// Total opcodes: 2137
-
-#ifndef OPCODES_V11_2_5_63506_H
-#define OPCODES_V11_2_5_63506_H
+// parser version: V11_2_5_63506
+// total opcodes: 2137
+#pragma once
 
 #include "Misc/Define.h"
 
-namespace PktParser::Versions::V11_2_5_63506::Opcodes
+namespace PktParser::V11_2_5_63506::Opcodes
 {
     constexpr uint32 CMSG_ABANDON_NPE_RESPONSE = 0x2F029A;
     constexpr uint32 CMSG_ACCEPT_GUILD_INVITE = 0x340029;
@@ -1613,7 +1611,7 @@ namespace PktParser::Versions::V11_2_5_63506::Opcodes
     constexpr uint32 SMSG_MOVE_SET_CAN_ADV_FLY = 0x480064;
     constexpr uint32 SMSG_MOVE_SET_CAN_DRIVE = 0x480076;
     constexpr uint32 SMSG_MOVE_SET_CAN_FLY = 0x480033;
-    constexpr uint32 SMSG_MOVE_SET_CANT_SWIM = 0x480035;
+    constexpr uint32 SMSG_MOVE_SET_CANNOT_SWIM = 0x480035;
     constexpr uint32 SMSG_MOVE_SET_CAN_TURN_WHILE_FALLING = 0x480037;
     constexpr uint32 SMSG_MOVE_SET_COLLISION_HEIGHT = 0x480043;
     constexpr uint32 SMSG_MOVE_SET_COMPOUND_STATE = 0x480047;
@@ -1667,7 +1665,7 @@ namespace PktParser::Versions::V11_2_5_63506::Opcodes
     constexpr uint32 SMSG_MOVE_UNSET_CAN_ADV_FLY = 0x480065;
     constexpr uint32 SMSG_MOVE_UNSET_CAN_DRIVE = 0x480077;
     constexpr uint32 SMSG_MOVE_UNSET_CAN_FLY = 0x480034;
-    constexpr uint32 SMSG_MOVE_UNSET_CANT_SWIM = 0x480036;
+    constexpr uint32 SMSG_MOVE_UNSET_CANNOT_SWIM = 0x480036;
     constexpr uint32 SMSG_MOVE_UNSET_CAN_TURN_WHILE_FALLING = 0x480038;
     constexpr uint32 SMSG_MOVE_UNSET_HOVERING = 0x480030;
     constexpr uint32 SMSG_MOVE_UNSET_IGNORE_MOVEMENT_FORCES = 0x48003A;
@@ -1832,7 +1830,9 @@ namespace PktParser::Versions::V11_2_5_63506::Opcodes
     constexpr uint32 SMSG_QUERY_PLAYER_NAMES_RESPONSE = 0x4A0026;
     constexpr uint32 SMSG_QUERY_QUEST_INFO_RESPONSE = 0x4B0016;
     constexpr uint32 SMSG_QUERY_REALM_GUILD_MASTER_INFO_RESPONSE = 0x42002E;
+    constexpr uint32 SMSG_QUERY_SELECTED_WOW_LABS_AREA_RESPONSE = 0x36031D;
     constexpr uint32 SMSG_QUERY_TIME_RESPONSE = 0x360181;
+    constexpr uint32 SMSG_QUERY_WOW_LABS_AREA_INFO_RESPONSE = 0x36031E;
     constexpr uint32 SMSG_QUEST_COMPLETION_NPC_RESPONSE = 0x4B0001;
     constexpr uint32 SMSG_QUEST_CONFIRM_ACCEPT = 0x4B000F;
     constexpr uint32 SMSG_QUEST_FORCE_REMOVED = 0x4B001C;
@@ -2135,18 +2135,14 @@ namespace PktParser::Versions::V11_2_5_63506::Opcodes
     constexpr uint32 SMSG_WORLD_QUEST_UPDATE_RESPONSE = 0x4A0017;
     constexpr uint32 SMSG_WORLD_SERVER_INFO = 0x360045;
     constexpr uint32 SMSG_WOW_ENTITLEMENT_NOTIFICATION = 0x3602EC;
-    constexpr uint32 SMSG_WOW_LABS_AREA_INFO = 0x36031E;
     constexpr uint32 SMSG_WOW_LABS_NOTIFY_PLAYERS_MATCH_END = 0x36031A;
     constexpr uint32 SMSG_WOW_LABS_NOTIFY_PLAYERS_MATCH_STATE_CHANGED = 0x36031B;
     constexpr uint32 SMSG_WOW_LABS_PARTY_ERROR = 0x360327;
-    constexpr uint32 SMSG_WOW_LABS_SET_AREA_ID_RESULT = 0x36031C;
     constexpr uint32 SMSG_WOW_LABS_SET_PREDICTION_CIRCLE = 0x360320;
-    constexpr uint32 SMSG_WOW_LABS_SET_SELECTED_AREA_ID = 0x36031D;
+    constexpr uint32 SMSG_WOW_LABS_SET_WOW_LABS_AREA_ID_RESPONSE = 0x36031C;
     constexpr uint32 SMSG_XP_AWARDED_FROM_CURRENCY = 0x360335;
     constexpr uint32 SMSG_XP_GAIN_ABORTED = 0x360062;
     constexpr uint32 SMSG_XP_GAIN_ENABLED = 0x360245;
     constexpr uint32 SMSG_ZONE_UNDER_ATTACK = 0x3B000B;
 
 }
-
-#endif

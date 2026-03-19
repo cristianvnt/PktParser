@@ -1,8 +1,6 @@
-#ifndef VERSION_FACTORY_H
-#define VERSION_FACTORY_H
+#pragma once
 
 #include "IVersionParser.h"
-#include "Common/BaseJsonSerializer.h"
 
 namespace PktParser::Versions
 {
@@ -12,18 +10,14 @@ namespace PktParser::Versions
         uint32 Build = 0;
         std::string Patch;
 
-        ~VersionContext()
-        {
-            delete Parser;
-        }
-
         VersionContext() = default;
-        VersionContext(VersionContext&& other) noexcept
-            : Parser(other.Parser), Build(other.Build), Patch(std::move(other.Patch))
+        ~VersionContext() { delete Parser; }
+
+        VersionContext(VersionContext &&other) noexcept : Parser{ other.Parser }, Build{ other.Build }, Patch { std::move(other.Patch) }
         {
             other.Parser = nullptr;
         }
-
+        
         VersionContext(VersionContext const&) = delete;
         VersionContext& operator=(VersionContext const&) = delete;
     };
@@ -35,5 +29,3 @@ namespace PktParser::Versions
         static bool IsSupported(uint32 build);
     };
 }
-
-#endif

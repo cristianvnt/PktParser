@@ -84,6 +84,15 @@ namespace PktParser::Db
         doc.WriteUInt("caster_entry", fields.casterEntry);
         doc.WriteUInt("caster_low", fields.casterLow);
         doc.WriteInt("map_id", fields.mapId);
+
+        if (!fields.hitTargetEntries.empty())
+        {
+            doc.Key("hit_target_entries");
+            doc.BeginArray();
+            for (uint32 entry : fields.hitTargetEntries)
+                doc.UInt(entry);
+            doc.EndArray();
+        }
     }
     
     void ElasticClient::IndexPacket(PktHeader const& header, char const* opcodeName, uint32 build, uint32 pktNumber,

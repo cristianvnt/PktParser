@@ -19,6 +19,7 @@ namespace PktParser::Common
         uint32 casterEntry;
         uint64 casterLow;
         int32 mapId;
+        std::vector<uint32> hitTargetEntries;
     };
 
     using SearchFields = std::variant<SpellSearchFields>;

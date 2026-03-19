@@ -1,13 +1,11 @@
 // AUTO-GENERATED from database - DO NOT EDIT
 // parser version: V11_2_7_64877
 // total opcodes: 2299
-
-#ifndef OPCODES_V11_2_7_64877_H
-#define OPCODES_V11_2_7_64877_H
+#pragma once
 
 #include "Misc/Define.h"
 
-namespace PktParser::Versions::V11_2_7_64877::Opcodes
+namespace PktParser::V11_2_7_64877::Opcodes
 {
     constexpr uint32 CMSG_ABANDON_NPE_RESPONSE = 0x39029A;
     constexpr uint32 CMSG_ACCEPT_GUILD_INVITE = 0x3E0029;
@@ -2310,5 +2308,3 @@ namespace PktParser::Versions::V11_2_7_64877::Opcodes
     constexpr uint32 SMSG_ZONE_UNDER_ATTACK = 0x45000B;
 
 }
-
-#endif

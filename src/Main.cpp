@@ -2,11 +2,12 @@
 
 #include "Reader/PktFileReader.h"
 #include "Database/Database.h"
-#include "Parser/ParallelProcessor.h"
+#include "ParallelProcessor.h"
 #include "VersionFactory.h"
 #include "IVersionParser.h"
 #include "Database/BuildInfo.h"
 #include "Database/OpcodeCache.h"
+#include "Utilities.h"
 
 #ifdef HAS_DROGON
 #include <drogon/HttpAppFramework.h>
@@ -117,7 +118,7 @@ int main(int argc, char* argv[])
 			std::string parserVersion = forcedParserVersion;
 			if (parserVersion.empty())
 			{
-				auto mapping = BuildInfo::Instance().GetMapping(build);
+				std::optional<BuildMapping> mapping = BuildInfo::Instance().GetMapping(build);
 				if (!mapping.has_value())
 				{
 					LOG("SKIP: Build {} not supported, skipping {}", build, filePath.string());

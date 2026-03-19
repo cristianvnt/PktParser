@@ -11,23 +11,24 @@ curl -X PUT "http://localhost:9200/wow_packets" -H "Content-Type: application/js
     "mappings": {
         "_source": { "enabled": false },
         "properties": {
-            "build":            { "type": "integer" },
-            "file_id":          { "type": "keyword" },
-            "packet_number":    { "type": "integer" },
-            "source_file":      { "type": "keyword" },
-            "direction":        { "type": "keyword" },
-            "opcode":           { "type": "integer" },
-            "packet_name":      { "type": "keyword" },
-            "timestamp":        { "type": "date", "format": "epoch_millis" },
-            
-            "original_cast_id": { "type": "keyword" },
-            "spell_id":         { "type": "integer" },
-            "cast_id":          { "type": "keyword" },
-            "caster_guid":      { "type": "keyword" },
-            "caster_type":      { "type": "keyword" },
-            "caster_entry":     { "type": "integer" },
-            "caster_low":       { "type": "long" },
-            "map_id":           { "type": "integer" }
+            "build":                { "type": "integer" },
+            "file_id":              { "type": "keyword" },
+            "packet_number":        { "type": "integer" },
+            "source_file":          { "type": "keyword" },
+            "direction":            { "type": "keyword" },
+            "opcode":               { "type": "integer" },
+            "packet_name":          { "type": "keyword" },
+            "timestamp":            { "type": "date", "format": "epoch_millis" },
+
+            "original_cast_id":     { "type": "keyword" },
+            "spell_id":             { "type": "integer" },
+            "cast_id":              { "type": "keyword" },
+            "caster_guid":          { "type": "keyword" },
+            "caster_type":          { "type": "keyword" },
+            "caster_entry":         { "type": "integer" },
+            "caster_low":           { "type": "long" },
+            "map_id":               { "type": "integer" },
+            "hit_target_entries":   { "type": "integer" }
         }
     }
 }'

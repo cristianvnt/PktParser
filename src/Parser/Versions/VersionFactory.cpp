@@ -9,8 +9,6 @@
 #include "V12_0_0_65390/Parser.h"
 #include "V12_0_1_65818/Parser.h"
 
-using namespace PktParser::Misc;
-
 namespace PktParser::Versions
 {
     VersionContext VersionFactory::Create(uint32 build)

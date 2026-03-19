@@ -1,22 +1,28 @@
-#ifndef PARSER_V12_0_1_65818_H
-#define PARSER_V12_0_1_65818_H
+#pragma once
 
-#include "Common/BaseVersionParser.h"
-#include "JsonSerializer.h"
-#include "Common/ParseResult.h"
-#include "Common/JsonWriter.h"
+#include "Reader/BitReader.h"
+#include "IVersionParser.h"
+#include "ParseResult.h"
+#include "OpcodeRegistry.h"
 
-namespace PktParser::Versions::V12_0_1_65818
+namespace PktParser::V12_0_1_65818
 {
 	using BitReader = PktParser::Reader::BitReader;
+	using IVersionParser = PktParser::Versions::IVersionParser;
+	using ParseResult = PktParser::Common::ParseResult;
 
-	class Parser final : public Common::BaseVersionParser<Parser, JsonSerializer>
+	class Parser final : public IVersionParser
 	{
+	private:
+		Common::OpcodeRegistry<Parser> _registry;
+		
 	public:
 		Parser();
-		Common::ParseResult ParseSpellStart(BitReader& reader);
-        Common::ParseResult ParseSpellGo(BitReader& reader);
+		std::optional<ParseResult> ParsePacket(uint32 opcode, BitReader& reader) override;
+
+		ParseResult HandleAuthChallenge(BitReader& reader);
+        ParseResult HandleSpellStart(BitReader& reader);
+        ParseResult HandleSpellGo(BitReader& reader);
+		ParseResult HandleUpdateWorldState(BitReader& reader);
 	};
 }
-
-#endif

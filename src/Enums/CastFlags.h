@@ -1,5 +1,4 @@
-#ifndef CAST_FLAGS_H
-#define CAST_FLAGS_H
+#pragma once
 
 #include "Misc/Define.h"
 
@@ -42,5 +41,3 @@ namespace PktParser::Enums
 		Unknown27 = 0x80000000
 	};
 }
-
-#endif

@@ -1,5 +1,4 @@
-#ifndef TARGET_VERSIONS
-#define TARGET_VERSIONS
+#pragma once
 
 #include "Misc/Define.h"
 
@@ -12,5 +11,3 @@ namespace PktParser::Enums
         Housing
     };
 }
-
-#endif

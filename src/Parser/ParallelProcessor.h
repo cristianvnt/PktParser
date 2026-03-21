@@ -1,5 +1,4 @@
-#ifndef PARALLEL_PROCESSOR_H
-#define PARALLEL_PROCESSOR_H
+#pragma once
 
 #include "Reader/PktFileReader.h"
 #include "Database/Database.h"
@@ -69,5 +68,3 @@ namespace PktParser
         size_t GetThreadCount() const { return _threadCount; }
     };
 }
-
-#endif

@@ -1,5 +1,4 @@
-#ifndef BUILD_INFO_H
-#define BUILD_INFO_H
+#pragma once
 
 #include "Misc/Define.h"
 #include <string>
@@ -30,5 +29,3 @@ namespace PktParser::Db
         bool IsSupported(uint32 BuildNumber) const;
     };
 }
-
-#endif

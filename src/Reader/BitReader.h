@@ -1,5 +1,4 @@
-#ifndef BIT_READER_H
-#define BIT_READER_H
+#pragma once
 
 #include "Misc/Define.h"
 #include "Misc/Exceptions.h"
@@ -175,5 +174,3 @@ namespace PktParser::Reader
 		}
 	};
 }
-
-#endif // !BIT_READER_H

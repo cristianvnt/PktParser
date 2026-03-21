@@ -1,5 +1,4 @@
-#ifndef DATABASE_H
-#define DATABASE_H
+#pragma once
 
 #include "Reader/PktFileReader.h"
 
@@ -88,5 +87,3 @@ namespace PktParser::Db
 		size_t GetTotalBytes() const { return _totalBytes.load(); }
 	};
 }
-
-#endif

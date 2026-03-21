@@ -1,5 +1,4 @@
-#ifndef JSON_WRITER_H
-#define JSON_WRITER_H
+#pragma once
 
 #include "Misc/Define.h"
 #include "Misc/WowGuid.h"
@@ -251,5 +250,3 @@ namespace PktParser::Common
         }
     };
 }
-
-#endif

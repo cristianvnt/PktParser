@@ -1,5 +1,4 @@
-#ifndef PKT_FILE_READER_H
-#define PKT_FILE_READER_H
+#pragma once
 
 #include <string>
 #include <vector>
@@ -108,4 +107,3 @@ namespace PktParser::Reader
 	};
 }
 
-#endif // !PKT_FILE_READER_H

@@ -1,5 +1,4 @@
-#ifndef SPELL_MISS_TYPE_H
-#define SPELL_MISS_TYPE_H
+#pragma once
 
 #include "Define.h"
 
@@ -23,5 +22,3 @@ namespace PktParser::Enums
 		Reflect = 11
 	};
 }
-
-#endif // !SPELL_MISS_TYPE_H

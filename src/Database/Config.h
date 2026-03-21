@@ -1,5 +1,4 @@
-#ifndef DATABASE_CONFIG_H
-#define DATABASE_CONFIG_H
+#pragma once
 
 #include <mutex>
 
@@ -18,5 +17,3 @@ namespace PktParser::Db
         static std::string GetCassandraKeyspace();
     };
 }
-
-#endif

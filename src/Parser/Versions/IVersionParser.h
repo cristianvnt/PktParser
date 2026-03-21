@@ -1,5 +1,4 @@
-#ifndef IVERSION_PARSER_H
-#define IVERSION_PARSER_H
+#pragma once
 
 #include "Misc/Define.h"
 #include "Common/ParseResult.h"
@@ -16,5 +15,3 @@ namespace PktParser::Versions
         virtual std::optional<Common::ParseResult> ParsePacket(uint32 opcode, Reader::BitReader& reader) = 0;
     };
 }
-
-#endif

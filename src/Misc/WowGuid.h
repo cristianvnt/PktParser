@@ -1,5 +1,4 @@
-#ifndef WOW_GUID_H
-#define WOW_GUID_H
+#pragma once
 
 #include "Define.h"
 #include "Reader/BitReader.h"
@@ -37,5 +36,3 @@ namespace PktParser::Misc
 	WowGuid128 ReadGuid128(BitReader& reader);
 	WowGuid128 ReadPackedGuid128(BitReader& reader);
 }
-
-#endif // !WOW_GUID_H

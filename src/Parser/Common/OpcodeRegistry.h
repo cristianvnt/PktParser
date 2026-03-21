@@ -1,5 +1,4 @@
-#ifndef OPCODE_REGISTRY_H
-#define OPCODE_REGISTRY_H
+#pragma once
 
 #include "Misc/Define.h"
 #include "ParseResult.h"
@@ -44,5 +43,3 @@ namespace PktParser::Common
         std::unordered_map<uint32, HandlerFunc> _handlers;
     };
 }
-
-#endif

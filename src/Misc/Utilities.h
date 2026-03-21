@@ -1,5 +1,4 @@
-#ifndef UTILITIES_H
-#define UTILITIES_H
+#pragma once
 
 #include <string>
 #include <ctime>
@@ -243,5 +242,3 @@ namespace PktParser::Misc
 		return result;
 	}
 }
-
-#endif // !UTILITIES_H

@@ -1,5 +1,4 @@
-#ifndef OPCODE_CACHE_H
-#define OPCODE_CACHE_H
+#pragma once
 
 #include "Misc/Define.h"
 #include <string>
@@ -31,5 +30,3 @@ namespace PktParser::Db
         bool IsLoaded(std::string const& parserVersion) const;
     };
 }
-
-#endif

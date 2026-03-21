@@ -1,5 +1,4 @@
-#ifndef ELASTIC_CLIENT_H
-#define ELASTIC_CLIENT_H
+#pragma once
 
 #include "Misc/Define.h"
 #include "Reader/PktFileReader.h"
@@ -60,5 +59,3 @@ namespace PktParser::Db
         int32 GetMaxBulk() const { return BULK_SIZE; }
     };
 }
-
-#endif

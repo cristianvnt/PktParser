@@ -1,5 +1,4 @@
-#ifndef PCHDEF_H
-#define PCHDEF_H
+#pragma once
 
 // std libs
 #include <iostream>
@@ -27,5 +26,3 @@
 #include "Misc/Define.h"
 #include "Misc/Logger.h"
 #include "Misc/Exceptions.h"
-
-#endif

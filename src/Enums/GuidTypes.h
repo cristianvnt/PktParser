@@ -1,5 +1,4 @@
-#ifndef GUID_TYPES_H
-#define GUID_TYPES_H
+#pragma once
 
 #include "Misc/Define.h"
 
@@ -141,5 +140,3 @@ namespace PktParser::Enums
 		}
 	}
 }
-
-#endif // !GUID_TYPES_H

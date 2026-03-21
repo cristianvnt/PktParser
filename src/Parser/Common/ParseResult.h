@@ -1,5 +1,4 @@
-#ifndef PARSE_RESULT_H
-#define PARSE_RESULT_H
+#pragma once
 
 #include "Misc/Define.h"
 
@@ -30,5 +29,3 @@ namespace PktParser::Common
         std::optional<SearchFields> searchFields;
     };
 }
-
-#endif

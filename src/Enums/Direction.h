@@ -1,5 +1,4 @@
-#ifndef DIRECTION_H
-#define DIRECTION_H
+#pragma once
 
 #include "Misc/Define.h"
 
@@ -29,5 +28,3 @@ namespace PktParser::Enums
 		Bidirectional = 4
 	};
 }
-
-#endif // !DIRECTION_H

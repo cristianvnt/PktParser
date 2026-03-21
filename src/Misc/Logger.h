@@ -1,5 +1,4 @@
-#ifndef LOGGER_H
-#define LOGGER_H
+#pragma once
 
 #include <fmt/core.h>
 #include <fstream>
@@ -53,5 +52,3 @@ public:
 };
 
 #define LOG(...) Logger::Instance().Log(__VA_ARGS__)
-
-#endif // !LOGGER_H

@@ -1,5 +1,4 @@
-#ifndef TARGET_FLAGS_H
-#define TARGET_FLAGS_H
+#pragma once
 
 #include "Misc/Define.h"
 
@@ -36,5 +35,3 @@ namespace PktParser::Enums
 		Unk40000000 = 0x40000000
 	};
 }
-
-#endif

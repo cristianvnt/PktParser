@@ -1,6 +1,7 @@
 #include "pchdef.h"
 #include "ElasticClient.h"
 #include "Misc/Utilities.h"
+#include "ParseResult.h"
 
 using namespace PktParser::Reader;
 using namespace PktParser::Common;
@@ -73,27 +74,6 @@ namespace PktParser::Db
         doc.WriteString("packet_name", opcodeName);
         doc.WriteInt("timestamp", static_cast<int64>(header.timestamp));
     }
-        
-    void ElasticClient::WriteSpellFields(JsonWriter& doc, Common::SpellSearchFields const& fields)
-    {
-        doc.WriteInt("spell_id", fields.spellId);
-        doc.WriteString("cast_id", fields.castId);
-        doc.WriteString("original_cast_id", fields.originalCastId);
-        doc.WriteString("caster_guid", fields.casterGuid);
-        doc.WriteString("caster_type", fields.casterType);
-        doc.WriteUInt("caster_entry", fields.casterEntry);
-        doc.WriteUInt("caster_low", fields.casterLow);
-        doc.WriteInt("map_id", fields.mapId);
-
-        if (!fields.hitTargetEntries.empty())
-        {
-            doc.Key("hit_target_entries");
-            doc.BeginArray();
-            for (uint32 entry : fields.hitTargetEntries)
-                doc.UInt(entry);
-            doc.EndArray();
-        }
-    }
     
     void ElasticClient::IndexPacket(PktHeader const& header, char const* opcodeName, uint32 build, uint32 pktNumber,
         ParseResult const& result, std::string const& srcFile, std::string const& fileId)
@@ -105,13 +85,7 @@ namespace PktParser::Db
         doc.BeginObject();
         WriteBaseDocument(doc, header, opcodeName, build, pktNumber, srcFile, fileId);
 
-        std::visit([&](auto const& fields)
-        {
-            using T = std::decay_t<decltype(fields)>;
-            if constexpr (std::is_same_v<T, SpellSearchFields>)
-                WriteSpellFields(doc, fields);
-            
-        }, *result.searchFields);
+        std::visit([&](auto const& fields) { fields.WriteTo(doc); }, *result.searchFields);
 
         doc.EndObject();
         BufferDocument(doc.GetString(), fileId, pktNumber);

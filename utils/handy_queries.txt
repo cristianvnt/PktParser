@@ -1,0 +1,53 @@
+# total docs indexed
+curl -s "http://localhost:9200/wow_packets/_count?pretty"
+
+# index size on disk
+curl -s "http://localhost:9200/_cat/indices?v"
+
+# browse any 5 docs (see what fields exist)
+curl -s "http://localhost:9200/wow_packets/_search?pretty" -H "Content-Type: application/json" -d '{
+    "docvalue_fields": ["spell_id", "caster_type", "caster_entry", "map_id", "packet_number", "hit_target_entries"],
+    "size": 5
+}'
+
+# search by spell ID
+curl -s "http://localhost:9200/wow_packets/_search?pretty" -H "Content-Type: application/json" -d '{
+    "query": { "term": { "spell_id": SPELL_ID } },
+    "docvalue_fields": ["spell_id", "caster_type", "packet_number", "hit_target_entries"],
+    "size": 5
+}'
+
+# count casts of a spell
+curl -s "http://localhost:9200/wow_packets/_count?pretty" -H "Content-Type: application/json" -d '{
+    "query": { "term": { "spell_id": SPELL_ID } }
+}'
+
+# top 20 most common hit target entries
+curl -s "http://localhost:9200/wow_packets/_search?pretty" -H "Content-Type: application/json" -d '{
+    "size": 0,
+    "aggs": {
+        "top_targets": {
+            "terms": { "field": "hit_target_entries", "size": 20 }
+        }
+    }
+}'
+
+# find casts that hit a specific creature entry
+curl -s "http://localhost:9200/wow_packets/_search?pretty" -H "Content-Type: application/json" -d '{
+    "query": { "term": { "hit_target_entries": CREATURE_ENTRY } },
+    "docvalue_fields": ["spell_id", "caster_type", "packet_number", "hit_target_entries"],
+    "size": 5
+}'
+
+# filter by caster type (Creature only)
+curl -s "http://localhost:9200/wow_packets/_search?pretty" -H "Content-Type: application/json" -d '{
+    "query": { "term": { "caster_type": "Creature" } },
+    "docvalue_fields": ["spell_id", "caster_entry", "packet_number"],
+    "size": 5
+}'
+
+# decode a specific packet from CSV
+grep -h ",PKT_NUMBER," csv/pkt_thread_*.csv | head -1 | cut -d',' -f9 | base64 -d | zstd -d | python3 -m json.tool
+
+# decode from Cassandra blob
+echo 'HEX_BLOB_HERE' | xxd -r -p | zstd -d | python3 -m json.tool

@@ -2,8 +2,8 @@
 
 #include "Misc/Define.h"
 #include "Reader/PktFileReader.h"
-#include "Common/ParseResult.h"
-#include "Common/JsonWriter.h"
+#include "ParseResult.h"
+#include "JsonWriter.h"
 
 #include <string>
 #include <mutex>
@@ -41,8 +41,6 @@ namespace PktParser::Db
         void BufferDocument(std::string const& docStr, std::string const& fileId, uint32 pktNumber);
         static void WriteBaseDocument(Common::JsonWriter& doc, Reader::PktHeader const& header, char const* opcodeName,
             uint32 build, uint32 pktNumber, std::string const& srcFile, std::string const& fileId);
-        
-        static void WriteSpellFields(Common::JsonWriter& doc, Common::SpellSearchFields const& fields);
         
     public:
         explicit ElasticClient(std::string const& baseURL = "http://localhost:9200");

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Misc/Define.h"
+#include "SpellSearchFields.h"
 
 #include <string>
 #include <optional>
@@ -8,19 +9,6 @@
 
 namespace PktParser::Common
 {
-    struct SpellSearchFields
-    {
-        int32 spellId;
-        std::string castId;
-        std::string originalCastId;
-        std::string casterGuid;
-        std::string casterType;
-        uint32 casterEntry;
-        uint64 casterLow;
-        int32 mapId;
-        std::vector<uint32> hitTargetEntries;
-    };
-
     using SearchFields = std::variant<SpellSearchFields>;
 
     struct ParseResult

@@ -1,7 +1,6 @@
 #include "pchdef.h"
 #include "ElasticClient.h"
 #include "Misc/Utilities.h"
-#include "ParseResult.h"
 
 using namespace PktParser::Reader;
 using namespace PktParser::Common;

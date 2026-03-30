@@ -100,7 +100,7 @@ namespace PktParser
 
         ElasticClient es;
         ZSTD_CCtx* cctx = ZSTD_createCCtx();
-        ZSTD_CCtx_setParameter(cctx, ZSTD_c_compressionLevel, 6);
+        ZSTD_CCtx_setParameter(cctx, ZSTD_c_compressionLevel, 1);
 
         FILE* csvFile = nullptr;
         if (_toCSV)

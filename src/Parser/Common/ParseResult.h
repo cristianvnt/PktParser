@@ -1,19 +1,41 @@
 #pragma once
 
 #include "Misc/Define.h"
-#include "SpellSearchFields.h"
+#include "ISearchFields.h"
 
 #include <string>
-#include <optional>
-#include <variant>
 
 namespace PktParser::Common
 {
-    using SearchFields = std::variant<SpellSearchFields>;
-
     struct ParseResult
     {
         std::string json;
-        std::optional<SearchFields> searchFields;
+        ISearchFields* searchFields = nullptr;
+
+        ParseResult(std::string json, ISearchFields* fields) : json{ std::move(json) }, searchFields{ fields } {}
+
+        ParseResult() = default;
+        ~ParseResult() { delete searchFields; }
+        ParseResult(ParseResult&& other) noexcept
+        {
+            json = std::move(other.json);
+            searchFields = other.searchFields;
+            other.searchFields = nullptr;
+        }
+
+        ParseResult& operator=(ParseResult&& other) noexcept
+        {
+            if (this != &other)
+            {
+                delete searchFields;
+                json = std::move(other.json);
+                searchFields = other.searchFields;
+                other.searchFields = nullptr;
+            }
+            return *this;
+        }
+
+        ParseResult(ParseResult const&) = delete;
+        ParseResult& operator=(ParseResult const&) = delete;
     };
 }

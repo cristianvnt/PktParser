@@ -31,7 +31,7 @@ namespace PktParser::V12_0_1_65818
 
     ParseResult Parser::HandleAuthChallenge([[maybe_unused]] BitReader &reader)
     {
-		return ParseResult{ "", std::nullopt };
+		return ParseResult{ "", nullptr };
     }
 
     ParseResult Parser::HandleSpellStart(BitReader &reader)
@@ -43,7 +43,7 @@ namespace PktParser::V12_0_1_65818
 
 		SpellSearchFields fields = FillSpellFields(data);
 
-		return ParseResult{ w.TakeString(), std::move(fields) };
+		return ParseResult{ w.TakeString(), new SpellSearchFields(fields) };
     }
 
     ParseResult Parser::HandleSpellGo(BitReader &reader)
@@ -55,11 +55,11 @@ namespace PktParser::V12_0_1_65818
 
 		SpellSearchFields fields = FillSpellFields(data);
 
-		return ParseResult{ w.TakeString(), std::move(fields) };
+		return ParseResult{ w.TakeString(), new SpellSearchFields(fields) };
     }
 	
     ParseResult Parser::HandleUpdateWorldState([[maybe_unused]] BitReader &reader)
     {
-        return ParseResult{ "", std::nullopt };
+        return ParseResult{ "", nullptr };
     }
 }

@@ -84,7 +84,7 @@ namespace PktParser::Db
         doc.BeginObject();
         WriteBaseDocument(doc, header, opcodeName, build, pktNumber, srcFile, fileId);
 
-        std::visit([&](auto const& fields) { fields.WriteTo(doc); }, *result.searchFields);
+        result.searchFields->WriteTo(doc);
 
         doc.EndObject();
         BufferDocument(doc.GetString(), fileId, pktNumber);

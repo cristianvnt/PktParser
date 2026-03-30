@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Common/ParseResult.h"
+#include "Common/SpellSearchFields.h"
 #include "../Structures/SpellCastData.h"
 
 namespace PktParser::V12_0_0_65390::SearchFields

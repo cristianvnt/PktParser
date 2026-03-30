@@ -2,13 +2,14 @@
 
 #include "Misc/Define.h"
 #include "JsonWriter.h"
+#include "ISearchFields.h"
 
 #include <string>
 #include <vector>
 
 namespace PktParser::Common
 {
-    struct SpellSearchFields
+    struct SpellSearchFields final : ISearchFields
     {
         int32 spellId;
         std::string castId;
@@ -20,7 +21,7 @@ namespace PktParser::Common
         int32 mapId;
         std::vector<uint32> hitTargetEntries;
 
-        void WriteTo(JsonWriter& doc) const
+        void WriteTo(JsonWriter& doc) const override
         {
             doc.WriteInt("spell_id", spellId);
             doc.WriteString("cast_id", castId);

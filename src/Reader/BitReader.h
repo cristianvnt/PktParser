@@ -87,9 +87,24 @@ namespace PktParser::Reader
 			return value;
 		}
 
+		int8 ReadInt8()
+		{
+			return static_cast<int8>(ReadUInt8());
+		}
+
+		int16 ReadInt16()
+		{
+			return static_cast<int16>(ReadUInt16());
+		}
+
 		int32 ReadInt32()
 		{
 			return static_cast<int32>(ReadUInt32());
+		}
+
+		int64 ReadInt64()
+		{
+			return static_cast<int64>(ReadUInt64());
 		}
 
 		float ReadFloat()
